@@ -248,7 +248,7 @@ local function selectTab(tab, name)
 end
 
 -- tab names
-local names = {"trolls","teleports","accessories","morphs","clients"}
+local names = {"main","teleports","accessories","morphs","clients"}
 
 for _, name in ipairs(names) do
     local tab = Instance.new("TextButton")
@@ -273,139 +273,133 @@ tabsHolder.CanvasSize = UDim2.new(0, #names*(130+8), 0, 0)
 -- default selected tab
 
 task.defer(function()
-    selectTab(tabs[1], "trolls")
+    selectTab(tabs[1], "main")
 end)
 
--- dance
-createButton("trolls","dance", function(enabled)
-    -- only run when button clicked
-    local player = game:GetService("Players").LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-    local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+-- infinite zoom
+local originalMaxZoom = nil
+local originalMinZoom = nil
 
-    -- local storage
-    local track1, track2
+createButton("main","infinite zoom",function(enabled)
 
-    if enabled then
-        -- anims
-        local anim1 = Instance.new("Animation")
-        anim1.AnimationId = "rbxassetid://6820493966"
-        local anim2 = Instance.new("Animation")
-        anim2.AnimationId = "rbxassetid://14650055488"
-
-        -- load anims
-        track1 = animator:LoadAnimation(anim1)
-        track2 = animator:LoadAnimation(anim2)
-
-        -- loop and high priority
-        track1.Looped = true
-        track2.Looped = true
-        track1.Priority = Enum.AnimationPriority.Action
-        track2.Priority = Enum.AnimationPriority.Action
-
-        -- play danceeeee
-        track1:Play()
-        track2:Play()
-
-        -- save tracks to button state
-        buttonStates["danceTracks"] = {track1, track2}
-    else
-        -- stop tracks
-        local tracks = buttonStates["danceTracks"]
-        if tracks then
-            for _, t in ipairs(tracks) do
-                if t.IsPlaying then
-                    t:Stop()
-                end
-            end
-        end
-    end
-end)
-
-
-createButton("trolls","spam anims", function(enabled)
     local player = game.Players.LocalPlayer
-    local char = player.Character or player.CharacterAdded:Wait()
-    local humanoid = char:WaitForChild("Humanoid")
-    local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
 
-    buttonStates = buttonStates or {}
-
-    -- anims
-    local animIds = {
-        6643217443, 13356528127, 13339747847, 6590484020,
-        12852222788, 13369580528, 6681968279, 6590482730,
-        6933968071, 6861653701, 14954698607, 6820493966,
-        9110989190, 6681957879, 6681960823, 6590485230,
-        14954703325, 6681964203, 14954707399, 14954738361
-    }
-
-    -- load tracks
-    local tracks = {}
-    for _, id in ipairs(animIds) do
-        local success, track = pcall(function()
-            local anim = Instance.new("Animation")
-            anim.AnimationId = "rbxassetid://"..id
-            local t = animator:LoadAnimation(anim)
-            t.Priority = Enum.AnimationPriority.Action
-            return t
-        end)
-        if success and track then
-            table.insert(tracks, track)
+    if enabled then
+        if not originalMaxZoom then
+            originalMaxZoom = player.CameraMaxZoomDistance
+            originalMinZoom = player.CameraMinZoomDistance
         end
+
+        player.CameraMaxZoomDistance = 1000000
+        player.CameraMinZoomDistance = 0.5
+
+    else
+        if originalMaxZoom then
+            player.CameraMaxZoomDistance = originalMaxZoom
+            player.CameraMinZoomDistance = originalMinZoom
+        end
+    end
+
+end)
+
+-- speed 100
+local speedConnection = nil
+local SPEED_VALUE = 100
+
+createButton("main","speedy ass",function(enabled)
+
+    local function applySpeed(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.WalkSpeed = SPEED_VALUE
+
+        if speedConnection then
+            speedConnection:Disconnect()
+        end
+
+        speedConnection = RunService.Heartbeat:Connect(function()
+            if humanoid.Parent and humanoid.WalkSpeed ~= SPEED_VALUE then
+                humanoid.WalkSpeed = SPEED_VALUE
+            end
+        end)
     end
 
     if enabled then
-        buttonStates["spamRunning"] = true
-        buttonStates["spamTracks"] = tracks
+        local character = player.Character or player.CharacterAdded:Wait()
+        applySpeed(character)
 
-        buttonStates["spamThread"] = task.spawn(function()
-            local lastIndex = nil
-
-            while buttonStates["spamRunning"] and char.Parent do
-                -- Stop everything first
-                for _, t in ipairs(tracks) do
-                    if t.IsPlaying then
-                        t:Stop(0)
-                    end
-                end
-
-                -- pick random animation
-                local index
-                repeat
-                    index = math.random(1,#tracks)
-                until index ~= lastIndex or #tracks == 1
-
-                lastIndex = index
-                local track = tracks[index]
-
-                if track and buttonStates["spamRunning"] then
-                    pcall(function()
-                        track:Play(0)
-                    end)
-                end
-
-                task.wait(0.05)
-            end
+        buttonStates.speedRespawn = player.CharacterAdded:Connect(function(character)
+            applySpeed(character)
         end)
-
     else
-        -- hard stop loop
-        buttonStates["spamRunning"] = false
-
-        -- stop all tracks immediately
-        if buttonStates["spamTracks"] then
-            for _, t in ipairs(buttonStates["spamTracks"]) do
-                pcall(function()
-                    t:Stop(0)
-                end)
-            end
+        if speedConnection then
+            speedConnection:Disconnect()
+            speedConnection = nil
         end
 
-        buttonStates["spamTracks"] = nil
-        buttonStates["spamThread"] = nil
+        if buttonStates.speedRespawn then
+            buttonStates.speedRespawn:Disconnect()
+            buttonStates.speedRespawn = nil
+        end
+
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
     end
+
+end)
+
+-- speedier
+local speedierConnection = nil
+local SPEEDIER_VALUE = 700
+
+createButton("main","speedier",function(enabled)
+
+    local function applySpeed(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.WalkSpeed = SPEEDIER_VALUE
+
+        if speedierConnection then
+            speedierConnection:Disconnect()
+        end
+
+        speedierConnection = RunService.Heartbeat:Connect(function()
+            if humanoid.Parent and humanoid.WalkSpeed ~= SPEEDIER_VALUE then
+                humanoid.WalkSpeed = SPEEDIER_VALUE
+            end
+        end)
+    end
+
+    if enabled then
+        local character = player.Character or player.CharacterAdded:Wait()
+        applySpeed(character)
+
+        buttonStates.speedierRespawn = player.CharacterAdded:Connect(function(character)
+            applySpeed(character)
+        end)
+    else
+        if speedierConnection then
+            speedierConnection:Disconnect()
+            speedierConnection = nil
+        end
+
+        if buttonStates.speedierRespawn then
+            buttonStates.speedierRespawn:Disconnect()
+            buttonStates.speedierRespawn = nil
+        end
+
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+    end
+
 end)
 
 -- EDITOR TEAM BUTTON (Trolls)
@@ -417,7 +411,7 @@ local RunService = game:GetService("RunService")
 local forcing = false
 local connection = nil
 
-createButton("trolls","editor\n team", function(state)
+createButton("main","editor\n team", function(state)
 
     if state then
         forcing = true
@@ -929,267 +923,7 @@ createButton("accessories","everything", function(enabled)
     toggleAll(editorRig)
 
 end)
--- MORPH STEALER 2.0 (COMPACT UI)
 
-createButton("morphs","morph stealer",function(enabled)
-
-if enabled then
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
-
-local player = Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
-
-	local colors = {
-	Main      = MAIN,
-	Raised    = RAISED,
-	Button    = BUTTON,
-	Text      = TEXT
-}
-
--- clean old
-if PlayerGui:FindFirstChild("MorphStealerGui") then
-	PlayerGui.MorphStealerGui:Destroy()
-end
-
---==============================
--- GUI ROOT
---==============================
-local gui = Instance.new("ScreenGui")
-gui.Name = "MorphStealerGui"
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = PlayerGui
-
---==============================
--- MAIN FRAME (SHORT + SKINNY)
---==============================
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 175)
-frame.Position = UDim2.new(0.5, -160, 0.5, -105)
-frame.BackgroundColor3 = colors.Main
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
-frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
-
---==============================
--- TOP BAR
---==============================
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 32)
-topBar.BackgroundColor3 = colors.Raised
-topBar.BorderSizePixel = 0
-topBar.Parent = frame
-Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 10)
-
-local mask = Instance.new("Frame")
-mask.Size = UDim2.new(1, 0, 0, 10)
-mask.Position = UDim2.new(0, 0, 1, -10)
-mask.BackgroundColor3 = colors.Raised
-mask.BorderSizePixel = 0
-mask.Parent = topBar
-
--- title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -36, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "morph stealer"
-title.Font = Enum.Font.FredokaOne
-title.TextSize = 14
-title.TextColor3 = colors.Text
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = topBar
-
--- close
-local close = Instance.new("TextButton")
-close.Size = UDim2.new(0, 32, 0, 32)
-close.Position = UDim2.new(1, -32, 0, 0)
-close.BackgroundTransparency = 1
-close.Text = "x"
-close.Font = Enum.Font.FredokaOne
-close.TextSize = 18
-close.TextColor3 = colors.Text
-close.Parent = topBar
-close.MouseButton1Click:Connect(function()
-	gui:Destroy()
-end)
-
---==============================
--- CONTENT AREA
---==============================
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -20, 1, -48)
-content.Position = UDim2.new(0, 10, 0, 38)
-content.BackgroundTransparency = 1
-content.Parent = frame
-
---==============================
--- USERNAME BOX
---==============================
-local userBox = Instance.new("TextBox")
-userBox.Size = UDim2.new(1, 0, 0, 38)
-userBox.Position = UDim2.new(0, 0, 0, 10)
-userBox.PlaceholderText = "target..."
-userBox.ClearTextOnFocus = false
-userBox.Text = ""
-userBox.Font = Enum.Font.FredokaOne
-userBox.TextSize = 14
-userBox.TextColor3 = colors.Text
-userBox.BackgroundColor3 = colors.Button
-userBox.BorderSizePixel = 0
-userBox.Parent = content
-Instance.new("UICorner", userBox).CornerRadius = UDim.new(0, 8)
-
---==============================
--- STEAL BUTTON
---==============================
-local stealBtn = Instance.new("TextButton")
-stealBtn.Size = UDim2.new(1, 0, 0, 38)
-stealBtn.Position = UDim2.new(0, 0, 0, 62)
-stealBtn.Text = "steal morph"
-stealBtn.Font = Enum.Font.FredokaOne
-stealBtn.TextSize = 14
-stealBtn.TextColor3 = colors.Text
-stealBtn.BackgroundColor3 = colors.Button
-stealBtn.BorderSizePixel = 0
-stealBtn.Parent = content
-Instance.new("UICorner", stealBtn).CornerRadius = UDim.new(0, 8)
-
---==============================
--- CAPTION
---==============================
-local caption = Instance.new("TextLabel")
-caption.Size = UDim2.new(1, 0, 0, 16)
-caption.Position  = UDim2.new(0, 0, 0, 110)
-caption.BackgroundTransparency = 1
-caption.Text = "you cannot steal the morphs of people who are in editor!"
-caption.Font = Enum.Font.FredokaOne
-caption.TextSize = 13
-caption.TextColor3 = colors.Text
-caption.TextTransparency = 0.25
-caption.TextXAlignment = Enum.TextXAlignment.Left
-caption.Parent = content
-
-
---==============================
--- SMART AUTOCOMPLETE (Username + DisplayName, certainty only)
---==============================
-local autofillLocked = false
-
-local function getMatches(input)
-	input = input:lower()
-	local matches = {}
-
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= player then
-			if plr.Name:lower():sub(1, #input) == input
-			or (plr.DisplayName and plr.DisplayName:lower():sub(1, #input) == input) then
-				table.insert(matches, plr)
-			end
-		end
-	end
-
-	return matches
-end
-
-
-
-userBox:GetPropertyChangedSignal("Text"):Connect(function()
-	if not userBox:IsFocused() then return end
-	if autofillLocked then return end
-	if userBox.Text == "" then return end
-
-	local matches = getMatches(userBox.Text)
-
-	if #matches == 1 then
-		local plr = matches[1]
-		autofillLocked = true
-
-		userBox.Text = plr.Name
-		userBox.CursorPosition = #plr.Name + 1
-		userBox.TextEditable = false
-
-		task.delay(2, function()
-			userBox.TextEditable = true
-			autofillLocked = false
-		end)
-	end
-end)
-
-
-stealBtn.MouseButton1Click:Connect(function()
-	local targetName = userBox.Text
-	if targetName == "" then
-		return
-	end
-
-	local targetPlayer = Players:FindFirstChild(targetName)
-	if not targetPlayer then
-		return
-	end
-
-	local targetChar = Workspace:FindFirstChild(targetPlayer.Name)
-	if not targetChar then
-		return
-	end
-
-	local editorRig = Workspace:FindFirstChild("EditorRig")
-	if not editorRig then
-		return
-	end
-
-	--==============================
-	-- COLLECT TARGET PARTS + COLORS
-	--==============================
-	local KEEP_NAMES = {}
-	local COLOR_MAP = {}
-
-	for _, obj in ipairs(targetChar:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			KEEP_NAMES[obj.Name] = true
-			COLOR_MAP[obj.Name] = obj.Color
-		end
-	end
-
-	if next(KEEP_NAMES) == nil then
-		return
-	end
-
-	--==============================
-	-- APPLY TO EDITORRIG
-	--==============================
-	for _, obj in ipairs(editorRig:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			if KEEP_NAMES[obj.Name] then
-				obj.Transparency = 0
-				obj.LocalTransparencyModifier = 0
-
-				if COLOR_MAP[obj.Name] then
-					obj.Color = COLOR_MAP[obj.Name]
-				end
-			else
-				obj.Transparency = 1
-				obj.LocalTransparencyModifier = 1
-			end
-		end
-	end
-
-end)
-
-else
-
-local gui = game.Players.LocalPlayer.PlayerGui:FindFirstChild("MorphStealerGui")
-if gui then
-    gui:Destroy()
-end
-
-end
-
-end)
   -- spam clones
 local function toggleSpamClones(enabled)
     local character = player.Character or player.CharacterAdded:Wait()
@@ -1379,6 +1113,60 @@ createButton("clients","ghost",function(enabled)
         end
 
         ghostOriginal = {}
+    end
+
+end)
+
+-- rainbow ghost
+local rainbowGhostConnection
+local rainbowGhostOriginals = {}
+
+createButton("clients","rainbow ghost",function(enabled)
+
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    if enabled then
+        -- save original materials and colors
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                rainbowGhostOriginals[obj] = {
+                    Material = obj.Material,
+                    Color = obj.Color
+                }
+                obj.Material = Enum.Material.ForceField
+            end
+        end
+
+        local hue = 0
+
+        rainbowGhostConnection = RunService.RenderStepped:Connect(function(dt)
+            hue = (hue + dt * 0.8) % 1
+            local color = Color3.fromHSV(hue, 1, 1)
+
+            for part in pairs(rainbowGhostOriginals) do
+                if part and part.Parent then
+                    part.Color = color
+                end
+            end
+        end)
+
+    else
+        -- stop rainbow loop
+        if rainbowGhostConnection then
+            rainbowGhostConnection:Disconnect()
+            rainbowGhostConnection = nil
+        end
+
+        -- restore originals
+        for part, data in pairs(rainbowGhostOriginals) do
+            if part and part.Parent then
+                part.Material = data.Material
+                part.Color = data.Color
+            end
+        end
+
+        rainbowGhostOriginals = {}
     end
 
 end)
@@ -1603,4 +1391,1188 @@ createButton("clients", "silly", function(enabled)
             neck.C0 = sillyOriginals[neck] * CFrame.Angles(0, 0, angle)
         end
     end)
+end)
+
+-- big
+local bigOriginalScale = nil
+
+createButton("clients","big",function(enabled)
+
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    if enabled then
+        if not bigOriginalScale then
+            bigOriginalScale = char:GetScale()
+        end
+
+        char:ScaleTo(bigOriginalScale * 3) -- 3x size
+
+    else
+        if bigOriginalScale then
+            char:ScaleTo(bigOriginalScale)
+        end
+    end
+
+end)
+
+-- bigger
+local biggerOriginalScale = nil
+
+createButton("clients","bigger",function(enabled)
+
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    if enabled then
+        if not biggerOriginalScale then
+            biggerOriginalScale = char:GetScale()
+        end
+
+        char:ScaleTo(biggerOriginalScale * 10) -- 10x size
+
+    else
+        if biggerOriginalScale then
+            char:ScaleTo(biggerOriginalScale)
+        end
+    end
+
+end)
+
+-- way too big
+local wayTooBigOriginalScale = nil
+
+createButton("clients","as big as my dih",function(enabled)
+
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    if enabled then
+        if not wayTooBigOriginalScale then
+            wayTooBigOriginalScale = char:GetScale()
+        end
+
+        char:ScaleTo(wayTooBigOriginalScale * 100) -- 100x size
+
+    else
+        if wayTooBigOriginalScale then
+            char:ScaleTo(wayTooBigOriginalScale)
+        end
+    end
+
+end)
+
+-- EVIL EYES
+local evilEyeOriginals = {}
+
+createButton("clients", "evil eyes", function(enabled)
+
+    local characterFolder = workspace:FindFirstChild(player.Name)
+    if not characterFolder then
+        warn("Your username folder was not found in Workspace!")
+        return
+    end
+
+    local eyeNames = {
+        "leftsclera",
+        "rightsclera",
+        "leftpupil",
+        "rightpupil"
+    }
+
+    if enabled then
+
+        -- Save original colours/materials
+        evilEyeOriginals = {}
+
+        for _, name in ipairs(eyeNames) do
+            local eye = characterFolder:FindFirstChild(name, true)
+
+            if eye and eye:IsA("BasePart") then
+                evilEyeOriginals[eye] = {
+                    Color = eye.Color,
+                    Material = eye.Material
+                }
+
+                -- Evil glowing red
+                eye.Color = Color3.fromRGB(255, 0, 0)
+                eye.Material = Enum.Material.Neon
+            else
+                warn("Could not find eye part: " .. name)
+            end
+        end
+
+    else
+
+        -- Restore original appearance
+        for eye, original in pairs(evilEyeOriginals) do
+            if eye and eye.Parent then
+                eye.Color = original.Color
+                eye.Material = original.Material
+            end
+        end
+
+        evilEyeOriginals = {}
+    end
+
+end)
+
+-- STARCLAN
+local starClanOriginals = {}
+
+createButton("clients", "starclan", function(enabled)
+
+    local characterFolder = workspace:FindFirstChild(player.Name)
+    if not characterFolder then
+        warn("Your username folder was not found in Workspace!")
+        return
+    end
+
+    local eyeNames = {
+        "leftsclera",
+        "rightsclera",
+        "leftpupil",
+        "rightpupil"
+    }
+
+    if enabled then
+
+        starClanOriginals = {}
+
+        -- Make everything ForceField
+        for _, obj in ipairs(characterFolder:GetDescendants()) do
+            if obj:IsA("BasePart") then
+
+                starClanOriginals[obj] = {
+                    Material = obj.Material,
+                    Color = obj.Color
+                }
+
+                obj.Material = Enum.Material.ForceField
+            end
+        end
+
+        -- Make eyes extremely bright white
+        for _, name in ipairs(eyeNames) do
+
+            local eye = characterFolder:FindFirstChild(name, true)
+
+            if eye and eye:IsA("BasePart") then
+
+                -- Make sure their original appearance is saved
+                if not starClanOriginals[eye] then
+                    starClanOriginals[eye] = {
+                        Material = eye.Material,
+                        Color = eye.Color
+                    }
+                end
+
+                eye.Color = Color3.fromRGB(255, 255, 255)
+                eye.Material = Enum.Material.Neon
+
+            else
+                warn("Could not find eye part: " .. name)
+            end
+        end
+
+    else
+
+        -- Restore everything
+        for obj, original in pairs(starClanOriginals) do
+            if obj and obj.Parent then
+                obj.Material = original.Material
+                obj.Color = original.Color
+            end
+        end
+
+        starClanOriginals = {}
+    end
+
+end)
+
+-- FAST TAIL WAG
+local fastTailConnection = nil
+local fastTailOriginals = {}
+
+createButton("clients", "tail wag", function(enabled)
+
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    -- stop old animation
+    if fastTailConnection then
+        fastTailConnection:Disconnect()
+        fastTailConnection = nil
+    end
+
+    -- restore original joints
+    for joint, originalC0 in pairs(fastTailOriginals) do
+        if joint and joint.Parent then
+            joint.C0 = originalC0
+        end
+    end
+
+    fastTailOriginals = {}
+
+    if not enabled then
+        return
+    end
+
+    -- find all tail Motor6Ds
+    local tailJoints = {}
+
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+            local name = obj.Name:lower()
+
+            if name:find("tail") then
+                table.insert(tailJoints, obj)
+                fastTailOriginals[obj] = obj.C0
+            end
+        end
+    end
+
+    if #tailJoints == 0 then
+        warn("No tail Motor6Ds found!")
+        return
+    end
+
+    -- =========================
+    -- FAST WAG SETTINGS
+    -- =========================
+
+    local tailSpeed = 16       -- higher = faster
+    local tailAmount = math.rad(25)
+
+    -- animate
+    fastTailConnection = RunService.RenderStepped:Connect(function()
+
+        local t = tick()
+
+        for i, joint in ipairs(tailJoints) do
+
+            if joint and joint.Parent then
+
+                -- segments farther down the tail move more
+                local amount = tailAmount * (0.5 + i * 0.15)
+
+                -- slight delay between segments
+                local phase = t * tailSpeed - (i * 0.35)
+
+                local angle = math.sin(phase) * amount
+
+                joint.C0 =
+                    fastTailOriginals[joint]
+                    * CFrame.Angles(0, angle, 0)
+            end
+        end
+
+    end)
+end)
+
+local TweenService = game:GetService("TweenService")
+
+local tongueMotorOriginals = {}
+local tongueTween = nil
+
+createButton("clients", "tongue out", function(enabled)
+
+    local characterFolder = workspace:FindFirstChild(player.Name, true)
+    if not characterFolder then return end
+
+    local tongue = characterFolder:FindFirstChild("Tongue", true)
+    if not tongue then return end
+
+    local motor
+
+    for _, obj in ipairs(characterFolder:GetDescendants()) do
+        if obj:IsA("Motor6D") and (obj.Part0 == tongue or obj.Part1 == tongue) then
+            motor = obj
+            break
+        end
+    end
+
+    if not motor then
+        warn("No Motor6D connected to Tongue")
+        return
+    end
+
+    if not tongueMotorOriginals[motor] then
+        tongueMotorOriginals[motor] = motor.C0
+    end
+
+    if tongueTween then
+        tongueTween:Cancel()
+        tongueTween = nil
+    end
+
+    local original = tongueMotorOriginals[motor]
+
+    -- Forward + slightly more downward
+    local outPosition =
+        original
+        * CFrame.new(
+            0,
+            -0.12,  -- forward
+            -0.025  -- downward
+        )
+
+    tongueTween = TweenService:Create(
+        motor,
+        TweenInfo.new(
+            0.35,
+            Enum.EasingStyle.Sine,
+            Enum.EasingDirection.InOut
+        ),
+        {
+            C0 = enabled and outPosition or original
+        }
+    )
+
+    tongueTween:Play()
+
+    tongueTween.Completed:Connect(function()
+        tongueTween = nil
+    end)
+
+end)
+
+--==================================================
+-- MORPH SAVER
+--==================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+local MorphSaverGui
+local MorphSaverFrame
+local MorphCodeBox
+local MorphSaverEnabled = false
+
+local MORPH_FONT = Enum.Font.FredokaOne
+
+--==================================================
+-- FIND EDITOR RIG
+--==================================================
+
+local function getEditorRig()
+    return workspace:FindFirstChild("EditorRig", true)
+end
+
+--==================================================
+-- DRAGGING
+--==================================================
+
+local function makeDraggable(frame, dragObject)
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    dragObject.InputBegan:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = frame.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            local delta = input.Position - dragStart
+
+            frame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+--==================================================
+-- POPUP
+--==================================================
+
+local function showMorphPopup()
+
+    if not MorphSaverGui then
+        return
+    end
+
+    local popup = Instance.new("TextLabel")
+
+    popup.Name = "SavedPopup"
+    popup.Size = UDim2.new(0, 390, 0, 50)
+    popup.Position = UDim2.new(0.5, -195, 0, 20)
+
+    popup.BackgroundColor3 = Color3.fromRGB(70, 46, 68)
+    popup.BackgroundTransparency = 0
+
+    popup.BorderSizePixel = 0
+
+    popup.Text = "copied to clipboard! keep this somewhere you dont lose it :)"
+
+    popup.TextColor3 = Color3.fromRGB(255, 255, 255)
+    popup.TextSize = 15
+    popup.Font = MORPH_FONT
+
+    popup.TextWrapped = true
+    popup.TextTransparency = 0
+
+    popup.ZIndex = 100
+
+    popup.Parent = MorphSaverGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = popup
+
+    -- Fade out
+    task.delay(2.5, function()
+
+        if popup and popup.Parent then
+
+            local tween = TweenService:Create(
+                popup,
+                TweenInfo.new(
+                    0.5,
+                    Enum.EasingStyle.Quad,
+                    Enum.EasingDirection.Out
+                ),
+                {
+                    TextTransparency = 1,
+                    BackgroundTransparency = 1
+                }
+            )
+
+            tween:Play()
+
+            tween.Completed:Wait()
+
+            if popup then
+                popup:Destroy()
+            end
+        end
+    end)
+end
+
+--==================================================
+-- CREATE GUI
+--==================================================
+
+local function createMorphSaver()
+
+    if MorphSaverGui then
+        MorphSaverGui.Enabled = true
+        MorphSaverEnabled = true
+        return
+    end
+
+    MorphSaverGui = Instance.new("ScreenGui")
+    MorphSaverGui.Name = "MorphSaverGui"
+    MorphSaverGui.ResetOnSpawn = false
+    MorphSaverGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    MorphSaverGui.Parent = player:WaitForChild("PlayerGui")
+
+    --==================================================
+    -- MAIN FRAME
+    --==================================================
+
+    MorphSaverFrame = Instance.new("Frame")
+    MorphSaverFrame.Name = "MorphSaver"
+    MorphSaverFrame.Size = UDim2.new(0, 460, 0, 350)
+    MorphSaverFrame.Position = UDim2.new(0.5, -230, 0.5, -175)
+
+    MorphSaverFrame.BackgroundColor3 = Color3.fromRGB(102, 66, 99)
+    MorphSaverFrame.BorderSizePixel = 0
+
+    MorphSaverFrame.Parent = MorphSaverGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 14)
+    frameCorner.Parent = MorphSaverFrame
+
+    --==================================================
+    -- DRAG BAR
+    --==================================================
+
+    local dragBar = Instance.new("Frame")
+    dragBar.Name = "DragBar"
+    dragBar.Size = UDim2.new(1, 0, 0, 48)
+    dragBar.BackgroundTransparency = 1
+    dragBar.Parent = MorphSaverFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+
+    title.BackgroundTransparency = 1
+    title.Text = "morph saver"
+
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 22
+    title.Font = MORPH_FONT
+
+    title.Parent = dragBar
+
+    makeDraggable(MorphSaverFrame, dragBar)
+
+    --==================================================
+    -- SAVE BUTTON
+    --==================================================
+
+    local saveButton = Instance.new("TextButton")
+    saveButton.Name = "SaveMorph"
+
+    saveButton.Size = UDim2.new(0, 205, 0, 45)
+    saveButton.Position = UDim2.new(0, 15, 0, 55)
+
+    saveButton.BackgroundColor3 = Color3.fromRGB(130, 88, 127)
+    saveButton.BorderSizePixel = 0
+
+    saveButton.Text = "save morph"
+    saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    saveButton.TextSize = 17
+    saveButton.Font = MORPH_FONT
+
+    saveButton.Parent = MorphSaverFrame
+
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 10)
+    saveCorner.Parent = saveButton
+
+    --==================================================
+    -- LOAD BUTTON
+    --==================================================
+
+    local loadButton = Instance.new("TextButton")
+    loadButton.Name = "LoadMorph"
+
+    loadButton.Size = UDim2.new(0, 205, 0, 45)
+    loadButton.Position = UDim2.new(0, 240, 0, 55)
+
+    loadButton.BackgroundColor3 = Color3.fromRGB(130, 88, 127)
+    loadButton.BorderSizePixel = 0
+
+    loadButton.Text = "load morph"
+    loadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    loadButton.TextSize = 17
+    loadButton.Font = MORPH_FONT
+
+    loadButton.Parent = MorphSaverFrame
+
+    local loadCorner = Instance.new("UICorner")
+    loadCorner.CornerRadius = UDim.new(0, 10)
+    loadCorner.Parent = loadButton
+
+    --==================================================
+    -- SCROLLING TEXTBOX AREA
+    --==================================================
+
+    local scroll = Instance.new("ScrollingFrame")
+
+    scroll.Name = "MorphCodeScroll"
+
+    scroll.Size = UDim2.new(1, -30, 0, 220)
+    scroll.Position = UDim2.new(0, 15, 0, 110)
+
+    scroll.BackgroundColor3 = Color3.fromRGB(70, 46, 68)
+    scroll.BorderSizePixel = 0
+
+    scroll.ScrollBarThickness = 7
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+
+    scroll.Parent = MorphSaverFrame
+
+    local scrollCorner = Instance.new("UICorner")
+    scrollCorner.CornerRadius = UDim.new(0, 10)
+    scrollCorner.Parent = scroll
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    MorphCodeBox = Instance.new("TextBox")
+
+    MorphCodeBox.Name = "MorphCode"
+
+    MorphCodeBox.Size = UDim2.new(1, -15, 0, 210)
+    MorphCodeBox.Position = UDim2.new(0, 5, 0, 5)
+
+    MorphCodeBox.BackgroundTransparency = 1
+    MorphCodeBox.BorderSizePixel = 0
+
+    -- START EMPTY
+    MorphCodeBox.Text = ""
+
+    MorphCodeBox.PlaceholderText = "paste morph code here..."
+    MorphCodeBox.PlaceholderColor3 =
+        Color3.fromRGB(190, 175, 188)
+
+    MorphCodeBox.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    MorphCodeBox.TextSize = 15
+    MorphCodeBox.Font = MORPH_FONT
+
+    MorphCodeBox.TextXAlignment = Enum.TextXAlignment.Left
+    MorphCodeBox.TextYAlignment = Enum.TextYAlignment.Top
+
+    MorphCodeBox.ClearTextOnFocus = false
+    MorphCodeBox.MultiLine = true
+    MorphCodeBox.TextWrapped = false
+
+    MorphCodeBox.Parent = scroll
+
+    --==================================================
+    -- SAVE MORPH
+    --==================================================
+
+    saveButton.MouseButton1Click:Connect(function()
+
+        local rig = getEditorRig()
+
+        if not rig then
+            warn("EditorRig not found!")
+            return
+        end
+
+        local lines = {}
+
+        for _, object in ipairs(rig:GetDescendants()) do
+
+            if object:IsA("BasePart")
+                and object.Transparency == 0 then
+
+                local c = object.Color
+
+                local r = math.round(c.R * 255)
+                local g = math.round(c.G * 255)
+                local b = math.round(c.B * 255)
+
+                table.insert(
+                    lines,
+                    object.Name ..
+                    "|" ..
+                    r ..
+                    "," ..
+                    g ..
+                    "," ..
+                    b
+                )
+            end
+        end
+
+        table.sort(lines)
+
+        local code = table.concat(lines, "\n")
+
+        -- NEVER put the generated code in the textbox
+        MorphCodeBox.Text = ""
+
+        -- Copy to clipboard
+        if setclipboard then
+
+            setclipboard(code)
+            showMorphPopup()
+
+        elseif toclipboard then
+
+            toclipboard(code)
+            showMorphPopup()
+
+        else
+
+            warn("Clipboard function unavailable.")
+            print(code)
+
+        end
+
+    end)
+
+    --==================================================
+    -- LOAD MORPH
+    --==================================================
+
+    loadButton.MouseButton1Click:Connect(function()
+
+        local rig = getEditorRig()
+
+        if not rig then
+            warn("EditorRig not found!")
+            return
+        end
+
+        local code = MorphCodeBox.Text
+
+        if code == "" then
+            warn("Paste a morph code first!")
+            return
+        end
+
+        for line in code:gmatch("[^\r\n]+") do
+
+            local partName, rgb =
+                line:match("^(.+)|(%d+,%d+,%d+)$")
+
+            if partName and rgb then
+
+                local r, g, b =
+                    rgb:match("^(%d+),(%d+),(%d+)$")
+
+                r = tonumber(r)
+                g = tonumber(g)
+                b = tonumber(b)
+
+                if r and g and b then
+
+                    local part
+
+                    for _, object in ipairs(rig:GetDescendants()) do
+
+                        if object:IsA("BasePart")
+                            and object.Name == partName then
+
+                            part = object
+                            break
+
+                        end
+                    end
+
+                    if part then
+
+                        part.Color =
+                            Color3.fromRGB(r, g, b)
+
+                        part.Transparency = 0
+
+                    end
+                end
+            end
+        end
+
+        print("Morph loaded!")
+
+    end)
+
+    MorphSaverEnabled = true
+end
+
+--==================================================
+-- ENABLE / DISABLE
+--==================================================
+
+createButton("morphs", "morph saver", function(enabled)
+
+    MorphSaverEnabled = enabled
+
+    if enabled then
+
+        createMorphSaver()
+
+        if MorphSaverGui then
+            MorphSaverGui.Enabled = true
+        end
+
+    else
+
+        if MorphSaverGui then
+            MorphSaverGui.Enabled = false
+        end
+
+    end
+
+end)
+
+--==================================================
+-- CUSTOM NAME CHANGER
+--==================================================
+
+local NameChangerGui
+local NameChangerFrame
+local NameBox
+
+local originalPlayerName
+local currentCustomName
+local nameConnection
+
+local NAME_FONT = Enum.Font.FredokaOne
+
+--==================================================
+-- FIND PLAYER NAME
+--==================================================
+
+local function getPlayerNameLabel()
+    local billboards = workspace:FindFirstChild("Billboards")
+    if not billboards then
+        return nil
+    end
+
+    -- Change this path if your game's Billboards folder
+    -- uses a different folder name for the local player.
+    local playerFolder = billboards:FindFirstChild(
+        game.Players.LocalPlayer.Name
+    )
+
+    if not playerFolder then
+        return nil
+    end
+
+    local content = playerFolder:FindFirstChild("Content")
+    if not content then return nil end
+
+    local mainContainer = content:FindFirstChild("MainContainer")
+    if not mainContainer then return nil end
+
+    local playerNameContainer =
+        mainContainer:FindFirstChild("PlayerNameContainer")
+
+    if not playerNameContainer then
+        return nil
+    end
+
+    return playerNameContainer:FindFirstChild("PlayerName")
+end
+
+--==================================================
+-- STOP OVERRIDE
+--==================================================
+
+local function stopNameOverride()
+
+    if nameConnection then
+        nameConnection:Disconnect()
+        nameConnection = nil
+    end
+
+end
+
+--==================================================
+-- APPLY NAME
+--==================================================
+
+local function applyCustomName()
+
+    local label = getPlayerNameLabel()
+
+    if not label then
+        warn("PlayerName label not found!")
+        return
+    end
+
+    -- Save original text only once
+    if originalPlayerName == nil then
+        originalPlayerName = label.Text
+    end
+
+    local typedName = NameBox.Text
+
+    if typedName == "" then
+        return
+    end
+
+    currentCustomName = "(@" .. typedName .. ")"
+
+    stopNameOverride()
+
+    nameConnection = game:GetService("RunService").RenderStepped:Connect(
+        function()
+
+            if label
+                and label.Parent
+                and currentCustomName then
+
+                if label.Text ~= currentCustomName then
+                    label.Text = currentCustomName
+                end
+
+            end
+
+        end
+    )
+
+end
+
+--==================================================
+-- RESET NAME
+--==================================================
+
+local function resetCustomName()
+
+    currentCustomName = nil
+
+    stopNameOverride()
+
+    local label = getPlayerNameLabel()
+
+    if label and originalPlayerName then
+        label.Text = originalPlayerName
+    end
+
+    originalPlayerName = nil
+
+end
+
+--==================================================
+-- CREATE MINI GUI
+--==================================================
+
+local function createNameChanger()
+
+    if NameChangerGui then
+        NameChangerGui.Enabled = true
+        return
+    end
+
+    NameChangerGui = Instance.new("ScreenGui")
+    NameChangerGui.Name = "UsernameChangerGui"
+    NameChangerGui.ResetOnSpawn = false
+    NameChangerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NameChangerGui.Parent =
+        game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    --==================================================
+    -- FRAME
+    --==================================================
+
+    NameChangerFrame = Instance.new("Frame")
+    NameChangerFrame.Name = "UsernameChanger"
+    NameChangerFrame.Size = UDim2.new(0, 420, 0, 210)
+    NameChangerFrame.Position =
+        UDim2.new(0.5, -210, 0.5, -105)
+
+    NameChangerFrame.BackgroundColor3 =
+        Color3.fromRGB(102, 66, 99)
+
+    NameChangerFrame.BorderSizePixel = 0
+    NameChangerFrame.Parent = NameChangerGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 14)
+    frameCorner.Parent = NameChangerFrame
+
+    --==================================================
+    -- TITLE / DRAG BAR
+    --==================================================
+
+    local dragBar = Instance.new("Frame")
+    dragBar.Size = UDim2.new(1, 0, 0, 45)
+    dragBar.BackgroundTransparency = 1
+    dragBar.Parent = NameChangerFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+
+    title.BackgroundTransparency = 1
+    title.Text = "custom name"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 21
+    title.Font = NAME_FONT
+    title.Parent = dragBar
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    local UserInputService =
+        game:GetService("UserInputService")
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    dragBar.InputBegan:Connect(function(input)
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseButton1
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = NameChangerFrame.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState ==
+                    Enum.UserInputState.End then
+
+                    dragging = false
+
+                end
+
+            end)
+
+        end
+
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseMovement
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            local delta =
+                input.Position - dragStart
+
+            NameChangerFrame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+
+        end
+
+    end)
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    NameBox = Instance.new("TextBox")
+    NameBox.Name = "NameBox"
+
+    NameBox.Size = UDim2.new(1, -30, 0, 45)
+    NameBox.Position = UDim2.new(0, 15, 0, 55)
+
+    NameBox.BackgroundColor3 =
+        Color3.fromRGB(70, 46, 68)
+
+    NameBox.BorderSizePixel = 0
+
+    NameBox.Text = ""
+    NameBox.PlaceholderText = "type a custom name..."
+    NameBox.PlaceholderColor3 =
+        Color3.fromRGB(190, 175, 188)
+
+    NameBox.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    NameBox.TextSize = 17
+    NameBox.Font = NAME_FONT
+
+    NameBox.ClearTextOnFocus = false
+    NameBox.Parent = NameChangerFrame
+
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 10)
+    boxCorner.Parent = NameBox
+
+    --==================================================
+    -- APPLY NAME
+    --==================================================
+
+    local applyButton = Instance.new("TextButton")
+
+    applyButton.Name = "ApplyName"
+    applyButton.Size = UDim2.new(0, 185, 0, 45)
+    applyButton.Position = UDim2.new(0, 15, 0, 115)
+
+    applyButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    applyButton.BorderSizePixel = 0
+    applyButton.Text = "apply name"
+
+    applyButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    applyButton.TextSize = 17
+    applyButton.Font = NAME_FONT
+    applyButton.Parent = NameChangerFrame
+
+    local applyCorner = Instance.new("UICorner")
+    applyCorner.CornerRadius = UDim.new(0, 10)
+    applyCorner.Parent = applyButton
+
+    applyButton.MouseButton1Click:Connect(function()
+        applyCustomName()
+    end)
+
+    --==================================================
+    -- RESET
+    --==================================================
+
+    local resetButton = Instance.new("TextButton")
+
+    resetButton.Name = "ResetName"
+    resetButton.Size = UDim2.new(0, 185, 0, 45)
+    resetButton.Position = UDim2.new(0, 220, 0, 115)
+
+    resetButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    resetButton.BorderSizePixel = 0
+    resetButton.Text = "reset"
+
+    resetButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    resetButton.TextSize = 17
+    resetButton.Font = NAME_FONT
+    resetButton.Parent = NameChangerFrame
+
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 10)
+    resetCorner.Parent = resetButton
+
+    resetButton.MouseButton1Click:Connect(function()
+        resetCustomName()
+    end)
+
+end
+
+--==================================================
+-- CREATEBUTTON
+--==================================================
+
+createButton("clients", "custom name", function(enabled)
+
+    if enabled then
+
+        createNameChanger()
+
+        NameChangerGui.Enabled = true
+
+    else
+
+        if NameChangerGui then
+            NameChangerGui.Enabled = false
+        end
+
+    end
+
 end)
