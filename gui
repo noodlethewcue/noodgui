@@ -154,21 +154,66 @@ grid.Parent = scroll
 grid.CellSize = UDim2.new(0,240,0,70)
 grid.CellPadding = UDim2.new(0,12,0,12)
 
+-- GUI SIZE SYSTEM
+local guiSizes = {
+    small = UDim2.new(0,400,0,260),
+    medium = UDim2.new(0,475,0,300),
+    large = UDim2.new(0,550,0,340)
+}
+
+local currentGuiSize = "large"
+local minimized = false
+
+local function updateGuiSize(sizeName)
+    if minimized then return end
+
+    currentGuiSize = sizeName
+    main.Size = guiSizes[sizeName]
+
+    -- Keep the buttons fitting nicely inside the GUI
+    local width = guiSizes[sizeName].X.Offset
+
+    if sizeName == "small" then
+        grid.CellSize = UDim2.new(0,170,0,60)
+        grid.CellPadding = UDim2.new(0,8,0,8)
+    elseif sizeName == "medium" then
+        grid.CellSize = UDim2.new(0,205,0,65)
+        grid.CellPadding = UDim2.new(0,10,0,10)
+    else
+        grid.CellSize = UDim2.new(0,240,0,70)
+        grid.CellPadding = UDim2.new(0,12,0,12)
+    end
+end
+
 -- MINIMIZE SYSTEM
 local minimized = false
-local normalSize = main.Size
+local savedGuiSize = main.Size
 
 minimize.MouseButton1Click:Connect(function()
-    minimized = not minimized
+    if not minimized then
+        -- Save whatever size the GUI is currently
+        savedGuiSize = main.Size
+        minimized = true
 
-    if minimized then
         tabsHolder.Visible = false
         scroll.Visible = false
-        main.Size = UDim2.new(0,550,0,60)
+
+        -- Keep the current width, only make it short
+        main.Size = UDim2.new(
+            savedGuiSize.X.Scale,
+            savedGuiSize.X.Offset,
+            0,
+            60
+        )
+
     else
+        minimized = false
+
         tabsHolder.Visible = true
         scroll.Visible = true
-        main.Size = normalSize
+
+        -- Restore the exact size it had before minimizing
+        main.Size = savedGuiSize
     end
 end)
 
@@ -220,6 +265,125 @@ holder.Parent = scroll
     table.insert(tabButtons[tabName], holder)
 end
 
+-- SETTINGS: GUI SIZE BUTTONS
+local guiSizeButtons = {}
+local currentGuiSize = "large gui"
+
+local guiSizes = {
+    ["small gui"] = UDim2.new(0,400,0,250),
+    ["medium gui"] = UDim2.new(0,475,0,295),
+    ["large gui"] = UDim2.new(0,550,0,340)
+}
+
+local function updateAllButtonSizes()
+    local width = main.AbsoluteSize.X
+
+    if width <= 420 then
+        grid.CellSize = UDim2.new(0.5,-4,0,50)
+        grid.CellPadding = UDim2.new(0,8,0,8)
+
+    elseif width <= 500 then
+        grid.CellSize = UDim2.new(0.5,-5,0,60)
+        grid.CellPadding = UDim2.new(0,10,0,10)
+
+    else
+        grid.CellSize = UDim2.new(0.5,-6,0,70)
+        grid.CellPadding = UDim2.new(0,12,0,12)
+    end
+end
+
+local function createGuiSizeButton(btnName)
+    tabButtons["settings"] = tabButtons["settings"] or {}
+
+    local holder = Instance.new("Frame")
+    holder.Parent = scroll
+    holder.Name = "Settings_" .. btnName
+    holder.BackgroundColor3 =
+        (btnName == "large gui") and BUTTON_CLICK or BUTTON
+    holder.BorderSizePixel = 0
+
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0,16)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    createShadowText(holder, btnName, 24)
+
+    btn.MouseButton1Down:Connect(function()
+        holder.BackgroundColor3 = BUTTON_CLICK
+    end)
+
+    btn.MouseButton1Up:Connect(function()
+        if currentGuiSize == btnName then
+            holder.BackgroundColor3 = BUTTON_CLICK
+        else
+            holder.BackgroundColor3 = BUTTON
+        end
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        currentGuiSize = btnName
+
+        -- Change the GUI size
+        main.Size = guiSizes[btnName]
+
+        -- Resize ALL buttons so they fit inside the category
+        updateAllButtonSizes()
+
+        -- Highlight selected size
+        for name, buttonHolder in pairs(guiSizeButtons) do
+            if name == currentGuiSize then
+                buttonHolder.BackgroundColor3 = BUTTON_CLICK
+            else
+                buttonHolder.BackgroundColor3 = BUTTON
+            end
+        end
+    end)
+
+    holder.Visible = false
+
+    -- THIS puts the buttons inside Settings
+    table.insert(tabButtons["settings"], holder)
+
+    guiSizeButtons[btnName] = holder
+end
+
+createGuiSizeButton("small gui")
+createGuiSizeButton("medium gui")
+createGuiSizeButton("large gui")
+
+-- THINGS TAB TEXT
+
+local thingsTextHolder = Instance.new("Frame")
+thingsTextHolder.Parent = main
+thingsTextHolder.Size = UDim2.new(1,-30,0,100)
+thingsTextHolder.Position = UDim2.new(0,15,0,205)
+thingsTextHolder.BackgroundTransparency = 1
+thingsTextHolder.Visible = false
+thingsTextHolder.ZIndex = 10
+
+local shoutout = Instance.new("TextLabel")
+shoutout.Parent = thingsTextHolder
+shoutout.Size = UDim2.new(1,0,1,0)
+shoutout.Position = UDim2.new(0,0,0,0)
+shoutout.BackgroundTransparency = 1
+shoutout.Text = "shoutout to ryuchan6969\nmade by @noodlethewcue on tiktok"
+shoutout.Font = Enum.Font.FredokaOne
+shoutout.TextSize = 22
+shoutout.TextColor3 = TEXT
+shoutout.TextStrokeTransparency = 0.5
+shoutout.TextStrokeColor3 = SHADOW
+shoutout.TextWrapped = true
+shoutout.TextXAlignment = Enum.TextXAlignment.Center
+shoutout.TextYAlignment = Enum.TextYAlignment.Center
+shoutout.ZIndex = 10
+
+tabButtons["things"] = tabButtons["things"] or {}
+table.insert(tabButtons["things"], thingsTextHolder)
+
 -- tab system
 local tabs = {}
 local selected = nil
@@ -248,7 +412,7 @@ local function selectTab(tab, name)
 end
 
 -- tab names
-local names = {"main","teleports","accessories","morphs","clients"}
+local names = {"main","clients","accessories","morphs","things","settings"}
 
 for _, name in ipairs(names) do
     local tab = Instance.new("TextButton")
@@ -1474,6 +1638,10 @@ createButton("clients", "evil eyes", function(enabled)
         "leftsclera",
         "rightsclera",
         "leftpupil",
+        "leftblind",
+        "rightpupilblind",
+        "leftpupilblind",
+        "rightblind",
         "rightpupil"
     }
 
@@ -1529,6 +1697,10 @@ createButton("clients", "starclan", function(enabled)
         "leftsclera",
         "rightsclera",
         "leftpupil",
+        "leftblind",
+        "rightpupilblind",
+        "leftpupilblind",
+        "rightblind",
         "rightpupil"
     }
 
