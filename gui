@@ -1231,6 +1231,376 @@ end
 -- Trolls
 
 -- Clients
+
+--==================================================
+-- CUSTOM NAME CHANGER
+--==================================================
+
+local NameChangerGui
+local NameChangerFrame
+local NameBox
+
+local originalPlayerName
+local currentCustomName
+local nameConnection
+
+local NAME_FONT = Enum.Font.FredokaOne
+
+--==================================================
+-- FIND PLAYER NAME
+--==================================================
+
+local function getPlayerNameLabel()
+    local billboards = workspace:FindFirstChild("Billboards")
+    if not billboards then
+        return nil
+    end
+
+    -- Change this path if your game's Billboards folder
+    -- uses a different folder name for the local player.
+    local playerFolder = billboards:FindFirstChild(
+        game.Players.LocalPlayer.Name
+    )
+
+    if not playerFolder then
+        return nil
+    end
+
+    local content = playerFolder:FindFirstChild("Content")
+    if not content then return nil end
+
+    local mainContainer = content:FindFirstChild("MainContainer")
+    if not mainContainer then return nil end
+
+    local playerNameContainer =
+        mainContainer:FindFirstChild("PlayerNameContainer")
+
+    if not playerNameContainer then
+        return nil
+    end
+
+    return playerNameContainer:FindFirstChild("PlayerName")
+end
+
+--==================================================
+-- STOP OVERRIDE
+--==================================================
+
+local function stopNameOverride()
+
+    if nameConnection then
+        nameConnection:Disconnect()
+        nameConnection = nil
+    end
+
+end
+
+--==================================================
+-- APPLY NAME
+--==================================================
+
+local function applyCustomName()
+
+    local label = getPlayerNameLabel()
+
+    if not label then
+        warn("PlayerName label not found!")
+        return
+    end
+
+    -- Save original text only once
+    if originalPlayerName == nil then
+        originalPlayerName = label.Text
+    end
+
+    local typedName = NameBox.Text
+
+    if typedName == "" then
+        return
+    end
+
+    currentCustomName = "(@" .. typedName .. ")"
+
+    stopNameOverride()
+
+    nameConnection = game:GetService("RunService").RenderStepped:Connect(
+        function()
+
+            if label
+                and label.Parent
+                and currentCustomName then
+
+                if label.Text ~= currentCustomName then
+                    label.Text = currentCustomName
+                end
+
+            end
+
+        end
+    )
+
+end
+
+--==================================================
+-- RESET NAME
+--==================================================
+
+local function resetCustomName()
+
+    currentCustomName = nil
+
+    stopNameOverride()
+
+    local label = getPlayerNameLabel()
+
+    if label and originalPlayerName then
+        label.Text = originalPlayerName
+    end
+
+    originalPlayerName = nil
+
+end
+
+--==================================================
+-- CREATE MINI GUI
+--==================================================
+
+local function createNameChanger()
+
+    if NameChangerGui then
+        NameChangerGui.Enabled = true
+        return
+    end
+
+    NameChangerGui = Instance.new("ScreenGui")
+    NameChangerGui.Name = "UsernameChangerGui"
+    NameChangerGui.ResetOnSpawn = false
+    NameChangerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NameChangerGui.Parent =
+        game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    --==================================================
+    -- FRAME
+    --==================================================
+
+    NameChangerFrame = Instance.new("Frame")
+    NameChangerFrame.Name = "UsernameChanger"
+    NameChangerFrame.Size = UDim2.new(0, 420, 0, 210)
+    NameChangerFrame.Position =
+        UDim2.new(0.5, -210, 0.5, -105)
+
+    NameChangerFrame.BackgroundColor3 =
+        Color3.fromRGB(102, 66, 99)
+
+    NameChangerFrame.BorderSizePixel = 0
+    NameChangerFrame.Parent = NameChangerGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 14)
+    frameCorner.Parent = NameChangerFrame
+
+    --==================================================
+    -- TITLE / DRAG BAR
+    --==================================================
+
+    local dragBar = Instance.new("Frame")
+    dragBar.Size = UDim2.new(1, 0, 0, 45)
+    dragBar.BackgroundTransparency = 1
+    dragBar.Parent = NameChangerFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+
+    title.BackgroundTransparency = 1
+    title.Text = "custom name"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 21
+    title.Font = NAME_FONT
+    title.Parent = dragBar
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    local UserInputService =
+        game:GetService("UserInputService")
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    dragBar.InputBegan:Connect(function(input)
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseButton1
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = NameChangerFrame.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState ==
+                    Enum.UserInputState.End then
+
+                    dragging = false
+
+                end
+
+            end)
+
+        end
+
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseMovement
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            local delta =
+                input.Position - dragStart
+
+            NameChangerFrame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+
+        end
+
+    end)
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    NameBox = Instance.new("TextBox")
+    NameBox.Name = "NameBox"
+
+    NameBox.Size = UDim2.new(1, -30, 0, 45)
+    NameBox.Position = UDim2.new(0, 15, 0, 55)
+
+    NameBox.BackgroundColor3 =
+        Color3.fromRGB(70, 46, 68)
+
+    NameBox.BorderSizePixel = 0
+
+    NameBox.Text = ""
+    NameBox.PlaceholderText = "type a custom name..."
+    NameBox.PlaceholderColor3 =
+        Color3.fromRGB(190, 175, 188)
+
+    NameBox.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    NameBox.TextSize = 17
+    NameBox.Font = NAME_FONT
+
+    NameBox.ClearTextOnFocus = false
+    NameBox.Parent = NameChangerFrame
+
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 10)
+    boxCorner.Parent = NameBox
+
+    --==================================================
+    -- APPLY NAME
+    --==================================================
+
+    local applyButton = Instance.new("TextButton")
+
+    applyButton.Name = "ApplyName"
+    applyButton.Size = UDim2.new(0, 185, 0, 45)
+    applyButton.Position = UDim2.new(0, 15, 0, 115)
+
+    applyButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    applyButton.BorderSizePixel = 0
+    applyButton.Text = "apply name"
+
+    applyButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    applyButton.TextSize = 17
+    applyButton.Font = NAME_FONT
+    applyButton.Parent = NameChangerFrame
+
+    local applyCorner = Instance.new("UICorner")
+    applyCorner.CornerRadius = UDim.new(0, 10)
+    applyCorner.Parent = applyButton
+
+    applyButton.MouseButton1Click:Connect(function()
+        applyCustomName()
+    end)
+
+    --==================================================
+    -- RESET
+    --==================================================
+
+    local resetButton = Instance.new("TextButton")
+
+    resetButton.Name = "ResetName"
+    resetButton.Size = UDim2.new(0, 185, 0, 45)
+    resetButton.Position = UDim2.new(0, 220, 0, 115)
+
+    resetButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    resetButton.BorderSizePixel = 0
+    resetButton.Text = "reset"
+
+    resetButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    resetButton.TextSize = 17
+    resetButton.Font = NAME_FONT
+    resetButton.Parent = NameChangerFrame
+
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 10)
+    resetCorner.Parent = resetButton
+
+    resetButton.MouseButton1Click:Connect(function()
+        resetCustomName()
+    end)
+
+end
+
+--==================================================
+-- CREATEBUTTON
+--==================================================
+
+createButton("clients", "custom name", function(enabled)
+
+    if enabled then
+
+        createNameChanger()
+
+        NameChangerGui.Enabled = true
+
+    else
+
+        if NameChangerGui then
+            NameChangerGui.Enabled = false
+        end
+
+    end
+
+end)
+
 createButton("clients","spam clones",toggleSpamClones)
 createButton("clients","ragdoll",function(enabled)
     local char = player.Character
@@ -1238,48 +1608,6 @@ createButton("clients","ragdoll",function(enabled)
     if enabled then ragdollCharacter(char) else unragdollCharacter(char) end
 end)
 createButton("clients","rainbow glow",toggleRainbow)
-
--- ghost
-local ghostConnection
-local ghostOriginal = {}
-
-createButton("clients","ghost",function(enabled)
-
-    if enabled then
-        -- Apply ForceField to all existing parts and save originals
-        for _, obj in pairs(game.Workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                ghostOriginal[obj] = obj.Material
-                obj.Material = Enum.Material.ForceField
-            end
-        end
-
-        -- Apply ForceField to newly added parts
-        ghostConnection = game.Workspace.DescendantAdded:Connect(function(obj)
-            if obj:IsA("BasePart") then
-                ghostOriginal[obj] = obj.Material
-                obj.Material = Enum.Material.ForceField
-            end
-        end)
-
-    else
-        -- disconnect listener
-        if ghostConnection then
-            ghostConnection:Disconnect()
-            ghostConnection = nil
-        end
-
-        -- restore original materials
-        for part, material in pairs(ghostOriginal) do
-            if part and part.Parent then
-                part.Material = material
-            end
-        end
-
-        ghostOriginal = {}
-    end
-
-end)
 
 -- rainbow ghost
 local rainbowGhostConnection
@@ -1557,32 +1885,10 @@ createButton("clients", "silly", function(enabled)
     end)
 end)
 
--- big
-local bigOriginalScale = nil
-
-createButton("clients","big",function(enabled)
-
-    local char = player.Character or player.CharacterAdded:Wait()
-
-    if enabled then
-        if not bigOriginalScale then
-            bigOriginalScale = char:GetScale()
-        end
-
-        char:ScaleTo(bigOriginalScale * 3) -- 3x size
-
-    else
-        if bigOriginalScale then
-            char:ScaleTo(bigOriginalScale)
-        end
-    end
-
-end)
-
 -- bigger
 local biggerOriginalScale = nil
 
-createButton("clients","bigger",function(enabled)
+createButton("clients","big",function(enabled)
 
     local char = player.Character or player.CharacterAdded:Wait()
 
@@ -1601,26 +1907,110 @@ createButton("clients","bigger",function(enabled)
 
 end)
 
--- way too big
-local wayTooBigOriginalScale = nil
+-- SLIT EYES
+local slitOriginal = {}
 
-createButton("clients","as big as my dih",function(enabled)
+createButton("clients", "slit eyes", function(enabled)
 
-    local char = player.Character or player.CharacterAdded:Wait()
+    local character = player.Character
+    if not character then return end
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
 
     if enabled then
-        if not wayTooBigOriginalScale then
-            wayTooBigOriginalScale = char:GetScale()
-        end
 
-        char:ScaleTo(wayTooBigOriginalScale * 100) -- 100x size
+        -- Find EVERY pupil
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") and pupilNames[obj.Name:lower()] then
+
+                -- Only save it once
+                if not slitOriginal[obj] then
+                    slitOriginal[obj] = {
+                        Size = obj.Size
+                    }
+                end
+
+                -- Make it narrow horizontally
+                local originalSize = slitOriginal[obj].Size
+
+                obj.Size = Vector3.new(
+                    originalSize.X * 0.45,
+                    originalSize.Y,
+                    originalSize.Z
+                )
+            end
+        end
 
     else
-        if wayTooBigOriginalScale then
-            char:ScaleTo(wayTooBigOriginalScale)
-        end
-    end
 
+        -- Restore EVERY pupil
+        for obj, original in pairs(slitOriginal) do
+            if obj and obj.Parent then
+                obj.Size = original.Size
+            end
+        end
+
+        table.clear(slitOriginal)
+    end
+end)
+
+-- WIDE EYES
+local wideOriginal = {}
+
+createButton("clients", "wide eyes", function(enabled)
+
+    local character = player.Character
+    if not character then return end
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
+
+    if enabled then
+
+        -- Find EVERY pupil
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") and pupilNames[obj.Name:lower()] then
+
+                -- Save original size
+                if not wideOriginal[obj] then
+                    wideOriginal[obj] = {
+                        Size = obj.Size
+                    }
+                end
+
+                local originalSize = wideOriginal[obj].Size
+
+                -- Make pupils wider
+                obj.Size = Vector3.new(
+                    originalSize.X * 1.6,
+                    originalSize.Y,
+                    originalSize.Z
+                )
+            end
+        end
+
+    else
+
+        -- Restore original sizes
+        for obj, original in pairs(wideOriginal) do
+            if obj and obj.Parent then
+                obj.Size = original.Size
+            end
+        end
+
+        table.clear(wideOriginal)
+    end
 end)
 
 -- EVIL EYES
@@ -2380,371 +2770,814 @@ createButton("morphs", "morph saver", function(enabled)
 
 end)
 
---==================================================
--- CUSTOM NAME CHANGER
---==================================================
+-- cupcake eyes
+local cupcakeOriginal = {}
 
-local NameChangerGui
-local NameChangerFrame
-local NameBox
+createButton("clients", "cupcake eyes", function(enabled)
 
-local originalPlayerName
-local currentCustomName
-local nameConnection
+    local character = player.Character
+    if not character then return end
 
-local NAME_FONT = Enum.Font.FredokaOne
+    local scleraNames = {
+        "leftsclera",
+        "leftblind",
+        "rightsclera",
+        "rightblind"
+    }
 
---==================================================
--- FIND PLAYER NAME
---==================================================
+    local pupilNames = {
+        "leftpupil",
+        "leftpupilblind",
+        "rightpupil",
+        "rightpupilblind"
+    }
 
-local function getPlayerNameLabel()
-    local billboards = workspace:FindFirstChild("Billboards")
-    if not billboards then
-        return nil
-    end
+    local function findParts(name)
+        local found = {}
 
-    -- Change this path if your game's Billboards folder
-    -- uses a different folder name for the local player.
-    local playerFolder = billboards:FindFirstChild(
-        game.Players.LocalPlayer.Name
-    )
-
-    if not playerFolder then
-        return nil
-    end
-
-    local content = playerFolder:FindFirstChild("Content")
-    if not content then return nil end
-
-    local mainContainer = content:FindFirstChild("MainContainer")
-    if not mainContainer then return nil end
-
-    local playerNameContainer =
-        mainContainer:FindFirstChild("PlayerNameContainer")
-
-    if not playerNameContainer then
-        return nil
-    end
-
-    return playerNameContainer:FindFirstChild("PlayerName")
-end
-
---==================================================
--- STOP OVERRIDE
---==================================================
-
-local function stopNameOverride()
-
-    if nameConnection then
-        nameConnection:Disconnect()
-        nameConnection = nil
-    end
-
-end
-
---==================================================
--- APPLY NAME
---==================================================
-
-local function applyCustomName()
-
-    local label = getPlayerNameLabel()
-
-    if not label then
-        warn("PlayerName label not found!")
-        return
-    end
-
-    -- Save original text only once
-    if originalPlayerName == nil then
-        originalPlayerName = label.Text
-    end
-
-    local typedName = NameBox.Text
-
-    if typedName == "" then
-        return
-    end
-
-    currentCustomName = "(@" .. typedName .. ")"
-
-    stopNameOverride()
-
-    nameConnection = game:GetService("RunService").RenderStepped:Connect(
-        function()
-
-            if label
-                and label.Parent
-                and currentCustomName then
-
-                if label.Text ~= currentCustomName then
-                    label.Text = currentCustomName
-                end
-
+        for _, obj in ipairs(character:GetDescendants()) do
+            if obj.Name:lower() == name then
+                table.insert(found, obj)
             end
-
         end
-    )
 
-end
-
---==================================================
--- RESET NAME
---==================================================
-
-local function resetCustomName()
-
-    currentCustomName = nil
-
-    stopNameOverride()
-
-    local label = getPlayerNameLabel()
-
-    if label and originalPlayerName then
-        label.Text = originalPlayerName
+        return found
     end
-
-    originalPlayerName = nil
-
-end
-
---==================================================
--- CREATE MINI GUI
---==================================================
-
-local function createNameChanger()
-
-    if NameChangerGui then
-        NameChangerGui.Enabled = true
-        return
-    end
-
-    NameChangerGui = Instance.new("ScreenGui")
-    NameChangerGui.Name = "UsernameChangerGui"
-    NameChangerGui.ResetOnSpawn = false
-    NameChangerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    NameChangerGui.Parent =
-        game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
-    --==================================================
-    -- FRAME
-    --==================================================
-
-    NameChangerFrame = Instance.new("Frame")
-    NameChangerFrame.Name = "UsernameChanger"
-    NameChangerFrame.Size = UDim2.new(0, 420, 0, 210)
-    NameChangerFrame.Position =
-        UDim2.new(0.5, -210, 0.5, -105)
-
-    NameChangerFrame.BackgroundColor3 =
-        Color3.fromRGB(102, 66, 99)
-
-    NameChangerFrame.BorderSizePixel = 0
-    NameChangerFrame.Parent = NameChangerGui
-
-    local frameCorner = Instance.new("UICorner")
-    frameCorner.CornerRadius = UDim.new(0, 14)
-    frameCorner.Parent = NameChangerFrame
-
-    --==================================================
-    -- TITLE / DRAG BAR
-    --==================================================
-
-    local dragBar = Instance.new("Frame")
-    dragBar.Size = UDim2.new(1, 0, 0, 45)
-    dragBar.BackgroundTransparency = 1
-    dragBar.Parent = NameChangerFrame
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 1, 0)
-    title.Position = UDim2.new(0, 10, 0, 0)
-
-    title.BackgroundTransparency = 1
-    title.Text = "custom name"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 21
-    title.Font = NAME_FONT
-    title.Parent = dragBar
-
-    --==================================================
-    -- DRAGGING
-    --==================================================
-
-    local UserInputService =
-        game:GetService("UserInputService")
-
-    local dragging = false
-    local dragStart
-    local startPosition
-
-    dragBar.InputBegan:Connect(function(input)
-
-        if input.UserInputType ==
-            Enum.UserInputType.MouseButton1
-            or input.UserInputType ==
-            Enum.UserInputType.Touch then
-
-            dragging = true
-            dragStart = input.Position
-            startPosition = NameChangerFrame.Position
-
-            input.Changed:Connect(function()
-
-                if input.UserInputState ==
-                    Enum.UserInputState.End then
-
-                    dragging = false
-
-                end
-
-            end)
-
-        end
-
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-
-        if not dragging then
-            return
-        end
-
-        if input.UserInputType ==
-            Enum.UserInputType.MouseMovement
-            or input.UserInputType ==
-            Enum.UserInputType.Touch then
-
-            local delta =
-                input.Position - dragStart
-
-            NameChangerFrame.Position = UDim2.new(
-                startPosition.X.Scale,
-                startPosition.X.Offset + delta.X,
-
-                startPosition.Y.Scale,
-                startPosition.Y.Offset + delta.Y
-            )
-
-        end
-
-    end)
-
-    --==================================================
-    -- TEXTBOX
-    --==================================================
-
-    NameBox = Instance.new("TextBox")
-    NameBox.Name = "NameBox"
-
-    NameBox.Size = UDim2.new(1, -30, 0, 45)
-    NameBox.Position = UDim2.new(0, 15, 0, 55)
-
-    NameBox.BackgroundColor3 =
-        Color3.fromRGB(70, 46, 68)
-
-    NameBox.BorderSizePixel = 0
-
-    NameBox.Text = ""
-    NameBox.PlaceholderText = "type a custom name..."
-    NameBox.PlaceholderColor3 =
-        Color3.fromRGB(190, 175, 188)
-
-    NameBox.TextColor3 =
-        Color3.fromRGB(255, 255, 255)
-
-    NameBox.TextSize = 17
-    NameBox.Font = NAME_FONT
-
-    NameBox.ClearTextOnFocus = false
-    NameBox.Parent = NameChangerFrame
-
-    local boxCorner = Instance.new("UICorner")
-    boxCorner.CornerRadius = UDim.new(0, 10)
-    boxCorner.Parent = NameBox
-
-    --==================================================
-    -- APPLY NAME
-    --==================================================
-
-    local applyButton = Instance.new("TextButton")
-
-    applyButton.Name = "ApplyName"
-    applyButton.Size = UDim2.new(0, 185, 0, 45)
-    applyButton.Position = UDim2.new(0, 15, 0, 115)
-
-    applyButton.BackgroundColor3 =
-        Color3.fromRGB(130, 88, 127)
-
-    applyButton.BorderSizePixel = 0
-    applyButton.Text = "apply name"
-
-    applyButton.TextColor3 =
-        Color3.fromRGB(255, 255, 255)
-
-    applyButton.TextSize = 17
-    applyButton.Font = NAME_FONT
-    applyButton.Parent = NameChangerFrame
-
-    local applyCorner = Instance.new("UICorner")
-    applyCorner.CornerRadius = UDim.new(0, 10)
-    applyCorner.Parent = applyButton
-
-    applyButton.MouseButton1Click:Connect(function()
-        applyCustomName()
-    end)
-
-    --==================================================
-    -- RESET
-    --==================================================
-
-    local resetButton = Instance.new("TextButton")
-
-    resetButton.Name = "ResetName"
-    resetButton.Size = UDim2.new(0, 185, 0, 45)
-    resetButton.Position = UDim2.new(0, 220, 0, 115)
-
-    resetButton.BackgroundColor3 =
-        Color3.fromRGB(130, 88, 127)
-
-    resetButton.BorderSizePixel = 0
-    resetButton.Text = "reset"
-
-    resetButton.TextColor3 =
-        Color3.fromRGB(255, 255, 255)
-
-    resetButton.TextSize = 17
-    resetButton.Font = NAME_FONT
-    resetButton.Parent = NameChangerFrame
-
-    local resetCorner = Instance.new("UICorner")
-    resetCorner.CornerRadius = UDim.new(0, 10)
-    resetCorner.Parent = resetButton
-
-    resetButton.MouseButton1Click:Connect(function()
-        resetCustomName()
-    end)
-
-end
-
---==================================================
--- CREATEBUTTON
---==================================================
-
-createButton("clients", "custom name", function(enabled)
 
     if enabled then
 
-        createNameChanger()
+        -- BLACK EYES
+        for _, name in ipairs(scleraNames) do
+            for _, obj in ipairs(findParts(name)) do
+                if obj:IsA("BasePart") then
 
-        NameChangerGui.Enabled = true
+                    if not cupcakeOriginal[obj] then
+                        cupcakeOriginal[obj] = {
+                            Color = obj.Color,
+                            Material = obj.Material
+                        }
+                    end
+
+                    obj.Color = Color3.fromRGB(0, 0, 0)
+                    obj.Material = Enum.Material.SmoothPlastic
+                end
+            end
+        end
+
+        -- VERY SLIGHT RED GLOW
+        for _, name in ipairs(pupilNames) do
+            for _, obj in ipairs(findParts(name)) do
+                if obj:IsA("BasePart") then
+
+                    if not cupcakeOriginal[obj] then
+                        cupcakeOriginal[obj] = {
+                            Color = obj.Color,
+                            Material = obj.Material
+                        }
+                    end
+
+                    obj.Color = Color3.fromRGB(255, 0, 0)
+
+                    -- Normal material = almost no glow
+                    obj.Material = Enum.Material.SmoothPlastic
+                end
+            end
+        end
 
     else
 
-        if NameChangerGui then
-            NameChangerGui.Enabled = false
+        -- RESTORE ORIGINAL APPEARANCE
+        for obj, original in pairs(cupcakeOriginal) do
+            if obj and obj.Parent then
+                obj.Color = original.Color
+                obj.Material = original.Material
+            end
         end
 
+        table.clear(cupcakeOriginal)
     end
+end)
+
+-- AGGRESSIVE POSE
+local aggressiveOriginals = {}
+local aggressivePupilOriginals = {}
+
+createButton("clients", "aggressive", function(enabled)
+
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    local leftEar
+    local rightEar
+    local neck
+
+    local tailJoints = {}
+    local mouthJoints = {}
+
+    -- Find joints
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+
+            local name = obj.Name:lower()
+
+            if name:find("lear") then
+                leftEar = obj
+
+            elseif name:find("rear") then
+                rightEar = obj
+
+            elseif name:find("neck") then
+                neck = obj
+
+            elseif name:find("tail") then
+                table.insert(tailJoints, obj)
+
+            elseif name:find("jaw") or name:find("mouth") then
+                table.insert(mouthJoints, obj)
+            end
+        end
+    end
+
+    -- ==========================================
+    -- ENABLE
+    -- ==========================================
+
+    if enabled then
+
+        -- Save original joint positions
+        local joints = {
+            leftEar,
+            rightEar,
+            neck
+        }
+
+        for _, joint in ipairs(tailJoints) do
+            table.insert(joints, joint)
+        end
+
+        for _, joint in ipairs(mouthJoints) do
+            table.insert(joints, joint)
+        end
+
+        for _, joint in ipairs(joints) do
+            if joint and not aggressiveOriginals[joint] then
+                aggressiveOriginals[joint] = joint.C0
+            end
+        end
+
+        -- Pinned ears
+        if leftEar then
+            leftEar.C0 =
+                aggressiveOriginals[leftEar]
+                * CFrame.Angles(0, 0, math.rad(45))
+        end
+
+        if rightEar then
+            rightEar.C0 =
+                aggressiveOriginals[rightEar]
+                * CFrame.Angles(0, 0, math.rad(-45))
+        end
+
+        -- Head / neck down
+        if neck then
+            neck.C0 =
+                aggressiveOriginals[neck]
+                * CFrame.Angles(math.rad(-15), 0, 0)
+        end
+
+        -- Super wide jaw
+        for _, joint in ipairs(mouthJoints) do
+            joint.C0 =
+                aggressiveOriginals[joint]
+                * CFrame.Angles(math.rad(-55), 0, 0)
+        end
+
+        -- Aggressive tail
+        for _, joint in ipairs(tailJoints) do
+            joint.C0 =
+                aggressiveOriginals[joint]
+                * CFrame.Angles(
+                    math.rad(-12),
+                    math.rad(18),
+                    0
+                )
+        end
+
+        -- ==========================================
+        -- SLIT PUPILS
+        -- ==========================================
+
+        local pupilNames = {
+            leftpupil = true,
+            leftpupilblind = true,
+            rightpupil = true,
+            rightpupilblind = true
+        }
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart")
+            and pupilNames[obj.Name:lower()] then
+
+                if not aggressivePupilOriginals[obj] then
+                    aggressivePupilOriginals[obj] = obj.Size
+                end
+
+                local originalSize =
+                    aggressivePupilOriginals[obj]
+
+                obj.Size = Vector3.new(
+                    originalSize.X * 0.45,
+                    originalSize.Y,
+                    originalSize.Z
+                )
+            end
+        end
+
+    -- ==========================================
+    -- DISABLE / RESTORE
+    -- ==========================================
+
+    else
+
+        -- Restore joints
+        for joint, originalC0 in pairs(aggressiveOriginals) do
+            if joint and joint.Parent then
+                joint.C0 = originalC0
+            end
+        end
+
+        -- Restore pupils
+        for pupil, originalSize in pairs(aggressivePupilOriginals) do
+            if pupil and pupil.Parent then
+                pupil.Size = originalSize
+            end
+        end
+
+        table.clear(aggressiveOriginals)
+        table.clear(aggressivePupilOriginals)
+    end
+end)
+
+-- SCARED
+local scaredOriginals = {}
+local scaredPupilOriginals = {}
+
+createButton("clients", "scared", function(enabled)
+
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    local leftEar
+    local rightEar
+    local tailJoints = {}
+
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+
+            local name = obj.Name:lower()
+
+            if name:find("lear") then
+                leftEar = obj
+
+            elseif name:find("rear") then
+                rightEar = obj
+
+            elseif name:find("tail") then
+                table.insert(tailJoints, obj)
+            end
+        end
+    end
+
+    if enabled then
+
+        -- Save originals
+        if leftEar then
+            scaredOriginals[leftEar] = leftEar.C0
+        end
+
+        if rightEar then
+            scaredOriginals[rightEar] = rightEar.C0
+        end
+
+        for _, joint in ipairs(tailJoints) do
+            scaredOriginals[joint] = joint.C0
+        end
+
+        -- ==========================================
+        -- EARS
+        -- FLAT AGAINST THE HEAD
+        -- ==========================================
+
+        if leftEar then
+            leftEar.C0 =
+                scaredOriginals[leftEar]
+                * CFrame.Angles(
+                    math.rad(65),
+                    math.rad(35),
+                    0
+                )
+        end
+
+        if rightEar then
+            rightEar.C0 =
+                scaredOriginals[rightEar]
+                * CFrame.Angles(
+                    math.rad(65),
+                    math.rad(-35),
+                    0
+                )
+        end
+
+        -- ==========================================
+        -- TAIL
+        -- KEEP ITS NATURAL CURVE
+        -- AND TUCK IT INWARD
+        -- ==========================================
+
+        for i, joint in ipairs(tailJoints) do
+
+            local inward = math.rad(10 + (i * 5))
+
+            joint.C0 =
+                scaredOriginals[joint]
+                * CFrame.Angles(
+                    math.rad(-8),
+                    0,
+                    inward
+                )
+        end
+
+
+        -- ==========================================
+        -- EYES
+        -- SLIGHTLY WIDER + LOOKING DOWN
+        -- ==========================================
+
+        local pupilNames = {
+            leftpupil = true,
+            leftpupilblind = true,
+            rightpupil = true,
+            rightpupilblind = true
+        }
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart")
+            and pupilNames[obj.Name:lower()] then
+
+                if not scaredPupilOriginals[obj] then
+                    scaredPupilOriginals[obj] = {
+                        Size = obj.Size,
+                        CFrame = obj.CFrame
+                    }
+                end
+
+                local original = scaredPupilOriginals[obj]
+
+                obj.Size = Vector3.new(
+                    original.Size.X * 1.30,
+                    original.Size.Y,
+                    original.Size.Z
+                )
+
+                obj.CFrame =
+                    original.CFrame
+                    * CFrame.new(0, -0.20, 0)
+            end
+        end
+
+    else
+
+        -- Restore ears/tail
+        for joint, originalC0 in pairs(scaredOriginals) do
+            if joint and joint.Parent then
+                joint.C0 = originalC0
+            end
+        end
+
+        -- Restore pupils
+        for pupil, original in pairs(scaredPupilOriginals) do
+            if pupil and pupil.Parent then
+                pupil.Size = original.Size
+                pupil.CFrame = original.CFrame
+            end
+        end
+
+        table.clear(scaredOriginals)
+        table.clear(scaredPupilOriginals)
+    end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+
+local function get(name)
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("Motor6D") and obj.Name:lower() == name:lower() then
+			return obj
+		end
+	end
+end
+
+local function getContaining(text)
+	local r = {}
+
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("Motor6D") and obj.Name:lower():find(text:lower(),1,true) then
+			table.insert(r,obj)
+		end
+	end
+
+	return r
+end
+
+local J = {
+	FLS=get("FLS"),FLL=get("FLL"),FLW=get("FLW"),FLP=get("FLP"),
+	FRS=get("FRS"),FRL=get("FRL"),FRW=get("FRW"),FRP=get("FRP"),
+
+	BLS=get("BLS"),BLL=get("BLL"),BLW=get("BLW"),BLP=get("BLP"),
+	BRS=get("BRS"),BRL=get("BRL"),BRW=get("BRW"),BRP=get("BRP"),
+
+	Chest=get("Chest"),
+	MidTorso=get("Mid Torso"),
+	Hip=get("Hip"),
+	Head=get("Head1"),
+	Neck=get("neck"),
+
+	LeftLid=get("leftlid"),
+	RightLid=get("rightlid"),
+
+	Mouth=get("mouth"),
+	Jaw=get("jaw")
+}
+
+local tailJoints = getContaining("tail")
+
+local original = {}
+
+for _,joint in pairs(J) do
+	if joint and joint:IsA("Motor6D") then
+		original[joint] = joint.C0
+	end
+end
+
+for _,joint in ipairs(tailJoints) do
+	original[joint] = joint.C0
+end
+
+local function move(name,x,y,z)
+
+	local joint=J[name]
+
+	if joint and original[joint] then
+		joint.C0 =
+			original[joint] *
+			CFrame.Angles(
+				math.rad(x),
+				math.rad(y),
+				math.rad(z)
+			)
+	end
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+
+local function getMotor(name)
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("Motor6D") and obj.Name:lower() == name:lower() then
+			return obj
+		end
+	end
+end
+
+local function getTail()
+	local result = {}
+
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("Motor6D") and obj.Name:lower():find("tail", 1, true) then
+			table.insert(result, obj)
+		end
+	end
+
+	return result
+end
+
+local J = {
+	FLS = getMotor("FLS"),
+	FLL = getMotor("FLL"),
+	FLW = getMotor("FLW"),
+	FLP = getMotor("FLP"),
+
+	FRS = getMotor("FRS"),
+	FRL = getMotor("FRL"),
+	FRW = getMotor("FRW"),
+	FRP = getMotor("FRP"),
+
+	BLS = getMotor("BLS"),
+	BLL = getMotor("BLL"),
+	BLW = getMotor("BLW"),
+	BLP = getMotor("BLP"),
+
+	BRS = getMotor("BRS"),
+	BRL = getMotor("BRL"),
+	BRW = getMotor("BRW"),
+	BRP = getMotor("BRP"),
+
+	Chest = getMotor("Chest"),
+	MidTorso = getMotor("Mid Torso"),
+	Hip = getMotor("Hip"),
+	Head = getMotor("Head1"),
+	Neck = getMotor("neck"),
+	Mouth = getMotor("mouth"),
+	Jaw = getMotor("jaw")
+}
+
+local tails = getTail()
+
+local original = {}
+
+for _, joint in pairs(J) do
+	if joint then
+		original[joint] = joint.C0
+	end
+end
+
+for _, joint in ipairs(tails) do
+	original[joint] = joint.C0
+end
+
+local function move(jointName, x, y, z)
+	local joint = J[jointName]
+
+	if joint and original[joint] then
+		joint.C0 =
+			original[joint] *
+			CFrame.Angles(
+				math.rad(x),
+				math.rad(y),
+				math.rad(z)
+			)
+	end
+end
+
+local stupidDance1 = false
+local stupidDance2 = false
+local danceStart = 0
+
+local function reset()
+	for joint, c0 in pairs(original) do
+		if joint and joint.Parent then
+			joint.C0 = c0
+		end
+	end
+end
+
+-- =====================================================
+-- STUPID DANCE 1
+-- =====================================================
+
+createButton("clients", "stupid dance 1", function(enabled)
+
+	stupidDance1 = enabled
+
+	if enabled then
+		stupidDance2 = false
+		danceStart = os.clock()
+	else
+		reset()
+	end
+
+end)
+
+-- =====================================================
+-- STUPID DANCE 2
+-- =====================================================
+
+createButton("clients", "stupid dance 2", function(enabled)
+
+	stupidDance2 = enabled
+
+	if enabled then
+		stupidDance1 = false
+		danceStart = os.clock()
+	else
+		reset()
+	end
+
+end)
+
+-- =====================================================
+-- CLIENT ANIMATION LOOP
+-- =====================================================
+
+RunService.RenderStepped:Connect(function()
+
+	if not char.Parent then
+		return
+	end
+
+	if not stupidDance1 and not stupidDance2 then
+		return
+	end
+
+	local t = (os.clock() - danceStart)
+
+	-- =================================================
+	-- DANCE 1
+	-- =================================================
+
+	if stupidDance1 then
+
+		t = t * 5
+
+		local a = math.sin(t)
+		local b = math.sin(t * 2)
+
+		-- BODY
+		move("Chest", b * 12, a * 8, math.cos(t) * 10)
+		move("MidTorso", -b * 8, -a * 5, -math.cos(t) * 7)
+		move("Hip", b * 10, -a * 10, math.cos(t) * 12)
+
+		-- HEAD
+		move("Neck",
+			math.sin(t * 2) * 12,
+			math.sin(t) * 20,
+			math.cos(t * 2) * 18
+		)
+
+		move("Head",
+			math.sin(t * 2) * 8,
+			math.cos(t * 1.5) * 12,
+			math.sin(t) * 15
+		)
+
+		-- FRONT LEFT
+		local fl = math.sin(t)
+
+		move("FLW", -fl * 65, 0, fl * 15)
+		move("FLP", -fl * 45, 0, fl * 12)
+		move("FLL", fl * 35, 0, -fl * 10)
+		move("FLS", fl * 45, 0, fl * 8)
+
+		-- FRONT RIGHT
+		local fr = math.sin(t + math.pi)
+
+		move("FRW", -fr * 65, 0, fr * 15)
+		move("FRP", -fr * 45, 0, fr * 12)
+		move("FRL", fr * 35, 0, -fr * 10)
+		move("FRS", fr * 45, 0, fr * 8)
+
+		-- BACK LEFT
+		local bl = math.sin(t + math.pi / 2)
+
+		move("BLW", -bl * 70, 0, bl * 18)
+		move("BLP", -bl * 50, 0, bl * 15)
+		move("BLL", bl * 40, 0, -bl * 12)
+		move("BLS", bl * 50, 0, bl * 10)
+
+		-- BACK RIGHT
+		local br = math.sin(t - math.pi / 2)
+
+		move("BRW", -br * 70, 0, br * 18)
+		move("BRP", -br * 50, 0, br * 15)
+		move("BRL", br * 40, 0, -br * 12)
+		move("BRS", br * 50, 0, br * 10)
+
+		-- TAIL
+		for i, joint in ipairs(tails) do
+			local wave = math.sin(t * 1.8 - i * 0.55)
+			local wave2 = math.cos(t * 1.8 - i * 0.55)
+
+			joint.C0 =
+				original[joint] *
+				CFrame.Angles(
+					math.rad(wave * (8 + i * 4)),
+					math.rad(wave2 * (12 + i * 5)),
+					math.rad(wave * (15 + i * 5))
+				)
+		end
+
+		-- JAW
+		local jaw = math.abs(math.sin(t * 2.2))
+
+		move("Jaw",
+			-jaw * 40,
+			math.sin(t * 4) * 10,
+			math.cos(t * 2.2) * 6
+		)
+
+		move("Mouth",
+			-jaw * 25,
+			math.sin(t * 2) * 10,
+			math.cos(t * 2) * 15
+		)
+
+	end
+
+	-- =================================================
+	-- DANCE 2
+	-- =================================================
+
+	if stupidDance2 then
+
+		t = t * 3.5
+
+		local sway = math.sin(t)
+
+		-- BIG BODY SWING
+		move("Chest",
+			sway * 18,
+			math.sin(t * 2) * 8,
+			sway * 22
+		)
+
+		move("MidTorso",
+			-sway * 12,
+			-math.sin(t * 2) * 5,
+			-sway * 14
+		)
+
+		move("Hip",
+			sway * 15,
+			-math.sin(t * 2) * 10,
+			sway * 18
+		)
+
+		-- HEAD
+		move("Neck",
+			math.sin(t * 1.5) * 15,
+			math.sin(t) * 28,
+			math.cos(t * 1.5) * 22
+		)
+
+		move("Head",
+			math.sin(t * 1.5) * 12,
+			math.cos(t) * 18,
+			math.sin(t) * 25
+		)
+
+		-- FRONT LEGS
+		local fl = math.sin(t)
+		local fr = math.sin(t + math.pi)
+
+		move("FLW", -fl * 80, 0, fl * 25)
+		move("FLP", -fl * 55, 0, fl * 20)
+		move("FLL", fl * 45, 0, -fl * 18)
+		move("FLS", fl * 55, 0, fl * 15)
+
+		move("FRW", -fr * 80, 0, fr * 25)
+		move("FRP", -fr * 55, 0, fr * 20)
+		move("FRL", fr * 45, 0, -fr * 18)
+		move("FRS", fr * 55, 0, fr * 15)
+
+		-- BACK LEGS KICK
+		local bl = math.sin(t + math.pi / 2)
+		local br = math.sin(t - math.pi / 2)
+
+		move("BLW", -bl * 75, 0, bl * 20)
+		move("BLP", -bl * 55, 0, bl * 18)
+		move("BLL", bl * 45, 0, -bl * 15)
+		move("BLS", bl * 50, 0, bl * 12)
+
+		move("BRW", -br * 75, 0, br * 20)
+		move("BRP", -br * 55, 0, br * 18)
+		move("BRL", br * 45, 0, -br * 15)
+		move("BRS", br * 50, 0, br * 12)
+
+		-- TAIL WHIP
+		for i, joint in ipairs(tails) do
+			local wave = math.sin(t * 2 - i * 0.7)
+			local wave2 = math.cos(t * 2 - i * 0.7)
+
+			joint.C0 =
+				original[joint] *
+				CFrame.Angles(
+					math.rad(wave * (12 + i * 5)),
+					math.rad(wave2 * (18 + i * 7)),
+					math.rad(wave * (20 + i * 7))
+				)
+		end
+
+		-- JAW
+		local jaw = math.abs(math.sin(t * 2.5))
+
+		move("Jaw",
+			-jaw * 48,
+			math.sin(t * 5) * 12,
+			math.cos(t * 2.5) * 8
+		)
+
+		move("Mouth",
+			-jaw * 20,
+			math.sin(t * 4) * 12,
+			math.cos(t * 3) * 12
+		)
+	end
 
 end)
