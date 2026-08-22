@@ -3,7 +3,33 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local Workspace = game:GetService("Workspace")
-local player = Players.LocalPlayer 
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ==========================================
+-- REMOVE PREVIOUS EXECUTION
+-- ==========================================
+
+for _, gui in ipairs(playerGui:GetChildren()) do
+    if gui.Name == "noodgui" or gui.Name == "nightguiKeySystem" then
+        gui:Destroy()
+    end
+end
+
+-- Reset key state for this execution
+_G.NightGUIKeyAccepted = false
+
+-- CLEAN UP OLD GUI INSTANCES
+local playerGui = player:WaitForChild("PlayerGui")
+
+for _, gui in ipairs(playerGui:GetChildren()) do
+    if gui.Name == "noodgui" or gui.Name == "nightguiKeySystem" then
+        gui:Destroy()
+    end
+end
+
+-- Reset key state for this execution
+_G.NightGUIKeyAccepted = false
 
 -- ==========================================
 -- KEY SYSTEM
@@ -11,170 +37,403 @@ local player = Players.LocalPlayer
 
 local CORRECT_KEY = "cupcake"
 
+-- Remove an old key window if one exists
+local playerGui = player:WaitForChild("PlayerGui")
+
+local oldKeyGui = playerGui:FindFirstChild("nightguiKeySystem")
+if oldKeyGui then
+    oldKeyGui:Destroy()
+end
+
+-- Key GUI
 local keyGui = Instance.new("ScreenGui")
 keyGui.Name = "nightguiKeySystem"
 keyGui.ResetOnSpawn = false
 keyGui.IgnoreGuiInset = true
 keyGui.DisplayOrder = 999999
-keyGui.Parent = player:WaitForChild("PlayerGui")
+keyGui.Parent = playerGui
+
+-- ==========================================
+-- KEY WINDOW
+-- ==========================================
 
 local keyFrame = Instance.new("Frame")
-keyFrame.Size = UDim2.new(0, 430, 0, 275)
-keyFrame.Position = UDim2.fromScale(0.5, 0.5)
-keyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-keyFrame.BackgroundColor3 = Color3.fromRGB(102, 66, 99)
+keyFrame.Name = "KeyFrame"
+keyFrame.Size = UDim2.new(0,550,0,340)
+keyFrame.Position = UDim2.new(0.5,-275,0.5,-170)
+keyFrame.BackgroundColor3 = Color3.fromRGB(102,66,99)
 keyFrame.BorderSizePixel = 0
+keyFrame.Active = true
 keyFrame.Parent = keyGui
 
-local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 14)
-frameCorner.Parent = keyFrame
+Instance.new("UICorner",keyFrame).CornerRadius = UDim.new(0,25)
 
-local frameStroke = Instance.new("UIStroke")
-frameStroke.Color = Color3.fromRGB(150, 105, 145)
-frameStroke.Thickness = 2
-frameStroke.Parent = keyFrame
+-- ==========================================
+-- DRAGGING
+-- ==========================================
 
+do
+    local dragging = false
+    local dragStart
+    local startPos
+
+    keyFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPos = keyFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if not dragging then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            local delta = input.Position - dragStart
+
+            keyFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ==========================================
+-- TEXT SHADOW
+-- ==========================================
+
+local function keyShadowText(parent,text,size)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = Color3.fromRGB(80,40,60)
+    shadow.TextXAlignment = Enum.TextXAlignment.Center
+
+    local real = shadow:Clone()
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Position = UDim2.new(0,0,0,0)
+    real.TextColor3 = Color3.fromRGB(255,255,255)
+
+    return real
+end
+
+-- ==========================================
 -- TITLE
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -30, 0, 45)
-title.Position = UDim2.new(0, 15, 0, 12)
-title.BackgroundTransparency = 1
-title.Text = "noodgui key system"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 25
-title.Font = Enum.Font.FredokaOne
-title.TextXAlignment = Enum.TextXAlignment.Center
-title.Parent = keyFrame
+-- ==========================================
 
-local titleShadow = Instance.new("UIStroke")
-titleShadow.Color = Color3.fromRGB(35, 20, 35)
-titleShadow.Thickness = 2
-titleShadow.Parent = title
+local titleHolder = Instance.new("Frame")
+titleHolder.Parent = keyFrame
+titleHolder.Size = UDim2.new(0,260,0,50)
+titleHolder.Position = UDim2.new(0,15,0,-5)
+titleHolder.BackgroundColor3 = Color3.fromRGB(122,82,118)
+titleHolder.BorderSizePixel = 0
 
+Instance.new("UICorner",titleHolder).CornerRadius = UDim.new(0,18)
+
+keyShadowText(
+    titleHolder,
+    "noodgui key system",
+    25
+)
+
+-- ==========================================
+-- TOP BUTTONS
+-- ==========================================
+
+local function createKeyTopButton(symbol,offset)
+
+    local holder = Instance.new("Frame")
+    holder.Parent = keyFrame
+    holder.Size = UDim2.new(0,45,0,45)
+    holder.Position = UDim2.new(1,offset,0,-5)
+    holder.BackgroundColor3 = Color3.fromRGB(142,98,138)
+    holder.BorderSizePixel = 0
+
+    Instance.new("UICorner",holder).CornerRadius = UDim.new(0,14)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    keyShadowText(holder,symbol,27)
+
+    btn.MouseButton1Down:Connect(function()
+        holder.BackgroundColor3 = Color3.fromRGB(192,132,180)
+    end)
+
+    btn.MouseButton1Up:Connect(function()
+        holder.BackgroundColor3 = Color3.fromRGB(142,98,138)
+    end)
+
+    return btn,holder
+end
+
+local keyMinimize = createKeyTopButton("-", -100)
+local keyClose = createKeyTopButton("X", -50)
+
+-- ==========================================
+-- MINIMIZE
+-- ==========================================
+
+local keyMinimized = false
+local keySavedSize = keyFrame.Size
+
+keyMinimize.MouseButton1Click:Connect(function()
+
+    if not keyMinimized then
+
+        keySavedSize = keyFrame.Size
+        keyMinimized = true
+
+        for _,child in ipairs(keyFrame:GetChildren()) do
+            if child ~= titleHolder
+            and child ~= keyMinimize.Parent
+            and child ~= keyClose.Parent then
+
+                if child:IsA("GuiObject") then
+                    child.Visible = false
+                end
+            end
+        end
+
+        keyFrame.Size = UDim2.new(0,550,0,60)
+
+    else
+
+        keyMinimized = false
+        keyFrame.Size = keySavedSize
+
+        for _,child in ipairs(keyFrame:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child.Visible = true
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- CLOSE
+-- ==========================================
+
+keyClose.MouseButton1Click:Connect(function()
+    keyGui:Destroy()
+end)
+
+-- ==========================================
 -- INFO
-local info = Instance.new("TextLabel")
-info.Size = UDim2.new(1, -40, 0, 30)
-info.Position = UDim2.new(0, 20, 0, 57)
-info.BackgroundTransparency = 1
-info.Text = "Enter your key to continue"
-info.TextColor3 = Color3.fromRGB(235, 220, 235)
-info.TextSize = 17
-info.Font = Enum.Font.FredokaOne
-info.TextXAlignment = Enum.TextXAlignment.Center
-info.Parent = keyFrame
+-- ==========================================
 
--- TEXTBOX
+local info = Instance.new("TextLabel")
+info.Parent = keyFrame
+info.Size = UDim2.new(1,-40,0,35)
+info.Position = UDim2.new(0,20,0,65)
+info.BackgroundTransparency = 1
+info.Text = "enter your key to continue"
+info.Font = Enum.Font.FredokaOne
+info.TextSize = 18
+info.TextColor3 = Color3.fromRGB(255,255,255)
+info.TextXAlignment = Enum.TextXAlignment.Center
+
+local infoStroke = Instance.new("UIStroke")
+infoStroke.Color = Color3.fromRGB(80,40,60)
+infoStroke.Thickness = 1.5
+infoStroke.Parent = info
+
+-- ==========================================
+-- KEY BOX
+-- ==========================================
+
 local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(1, -70, 0, 42)
-keyBox.Position = UDim2.new(0, 35, 0, 95)
-keyBox.BackgroundColor3 = Color3.fromRGB(75, 48, 73)
+keyBox.Parent = keyFrame
+keyBox.Size = UDim2.new(1,-70,0,48)
+keyBox.Position = UDim2.new(0,35,0,110)
+keyBox.BackgroundColor3 = Color3.fromRGB(75,48,73)
 keyBox.BorderSizePixel = 0
-keyBox.PlaceholderText = "Enter key..."
-keyBox.PlaceholderColor3 = Color3.fromRGB(180, 165, 180)
+keyBox.PlaceholderText = "enter key..."
+keyBox.PlaceholderColor3 = Color3.fromRGB(180,165,180)
 keyBox.Text = ""
-keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyBox.TextColor3 = Color3.fromRGB(255,255,255)
 keyBox.TextSize = 18
 keyBox.Font = Enum.Font.FredokaOne
 keyBox.ClearTextOnFocus = false
-keyBox.Parent = keyFrame
 
-local boxCorner = Instance.new("UICorner")
-boxCorner.CornerRadius = UDim.new(0, 10)
-boxCorner.Parent = keyBox
+Instance.new("UICorner",keyBox).CornerRadius = UDim.new(0,14)
 
-local boxStroke = Instance.new("UIStroke")
-boxStroke.Color = Color3.fromRGB(145, 100, 140)
-boxStroke.Thickness = 1.5
-boxStroke.Parent = keyBox
+local keyBoxStroke = Instance.new("UIStroke")
+keyBoxStroke.Color = Color3.fromRGB(152,92,140)
+keyBoxStroke.Thickness = 2
+keyBoxStroke.Parent = keyBox
 
--- ENTER
+-- ==========================================
+-- ENTER BUTTON
+-- ==========================================
+
 local enterButton = Instance.new("TextButton")
-enterButton.Size = UDim2.new(0, 130, 0, 38)
-enterButton.Position = UDim2.new(0.5, -65, 0, 150)
-enterButton.BackgroundColor3 = Color3.fromRGB(125, 82, 120)
-enterButton.BorderSizePixel = 0
-enterButton.Text = "Enter"
-enterButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-enterButton.TextSize = 18
-enterButton.Font = Enum.Font.FredokaOne
 enterButton.Parent = keyFrame
+enterButton.Size = UDim2.new(0,145,0,45)
+enterButton.Position = UDim2.new(0.5,-72,0,170)
+enterButton.BackgroundColor3 = Color3.fromRGB(172,112,160)
+enterButton.BorderSizePixel = 0
+enterButton.Text = ""
 
-local enterCorner = Instance.new("UICorner")
-enterCorner.CornerRadius = UDim.new(0, 10)
-enterCorner.Parent = enterButton
+Instance.new("UICorner",enterButton).CornerRadius = UDim.new(0,14)
 
-local enterStroke = Instance.new("UIStroke")
-enterStroke.Color = Color3.fromRGB(165, 115, 160)
-enterStroke.Thickness = 1.5
-enterStroke.Parent = enterButton
+keyShadowText(
+    enterButton,
+    "Enter",
+    20
+)
 
-local enterShadow = Instance.new("UIStroke")
-enterShadow.Color = Color3.fromRGB(40, 20, 40)
-enterShadow.Thickness = 1.5
-enterShadow.Parent = enterButton
-
+-- ==========================================
 -- DISCORD
+-- ==========================================
+
 local discord = Instance.new("TextLabel")
-discord.Size = UDim2.new(1, -30, 0, 45)
-discord.Position = UDim2.new(0, 15, 0, 195)
+discord.Parent = keyFrame
+discord.Size = UDim2.new(0,350,0,45)
+discord.Position = UDim2.new(0,25,0,235)
 discord.BackgroundTransparency = 1
-discord.Text = "Join https://discord.gg/57m32kQGJ for key"
-discord.TextColor3 = Color3.fromRGB(225, 205, 225)
+discord.Text = "join https://discord.gg/57m32kQGJ for key"
+discord.TextColor3 = Color3.fromRGB(255,255,255)
 discord.TextSize = 14
 discord.Font = Enum.Font.FredokaOne
-discord.TextXAlignment = Enum.TextXAlignment.Center
+discord.TextXAlignment = Enum.TextXAlignment.Left
 discord.TextWrapped = true
-discord.Parent = keyFrame
 
-local discordShadow = Instance.new("UIStroke")
-discordShadow.Color = Color3.fromRGB(35, 20, 35)
-discordShadow.Thickness = 1
-discordShadow.Parent = discord
+local discordStroke = Instance.new("UIStroke")
+discordStroke.Color = Color3.fromRGB(80,40,60)
+discordStroke.Thickness = 1
+discordStroke.Parent = discord
 
+-- ==========================================
+-- COPY BUTTON
+-- ==========================================
+
+local copyButton = Instance.new("TextButton")
+copyButton.Parent = keyFrame
+copyButton.Size = UDim2.new(0,110,0,40)
+copyButton.Position = UDim2.new(1,-135,0,237)
+copyButton.BackgroundColor3 = Color3.fromRGB(172,112,160)
+copyButton.BorderSizePixel = 0
+copyButton.Text = ""
+
+Instance.new("UICorner",copyButton).CornerRadius = UDim.new(0,13)
+
+keyShadowText(copyButton,"Copy",18)
+
+copyButton.MouseButton1Click:Connect(function()
+
+    if setclipboard then
+        setclipboard("https://discord.gg/57m32kQGJ")
+    end
+
+    for _,child in ipairs(copyButton:GetChildren()) do
+        if child.Name == "ShadowText"
+        or child.Name == "RealText" then
+            child:Destroy()
+        end
+    end
+
+    keyShadowText(copyButton,"Copied!",18)
+
+    task.delay(1.5,function()
+
+        if copyButton and copyButton.Parent then
+
+            for _,child in ipairs(copyButton:GetChildren()) do
+                if child.Name == "ShadowText"
+                or child.Name == "RealText" then
+                    child:Destroy()
+                end
+            end
+
+            keyShadowText(copyButton,"Copy",18)
+        end
+    end)
+end)
+
+-- ==========================================
 -- RESULT
+-- ==========================================
+
 local result = Instance.new("TextLabel")
-result.Size = UDim2.new(1, -30, 0, 25)
-result.Position = UDim2.new(0, 15, 0, 240)
+result.Parent = keyFrame
+result.Size = UDim2.new(1,-30,0,25)
+result.Position = UDim2.new(0,15,0,295)
 result.BackgroundTransparency = 1
 result.Text = ""
 result.TextSize = 14
 result.Font = Enum.Font.FredokaOne
 result.TextXAlignment = Enum.TextXAlignment.Center
-result.Parent = keyFrame
 
--- CHECK
+-- ==========================================
+-- CHECK KEY
+-- ==========================================
+
 local function checkKey()
 
-	if keyBox.Text:lower() == CORRECT_KEY then
+    if keyBox.Text:lower() == CORRECT_KEY then
 
-		result.Text = "Key accepted!"
-		result.TextColor3 = Color3.fromRGB(170, 255, 180)
+        result.Text = "Key accepted!"
+        result.TextColor3 = Color3.fromRGB(170,255,180)
 
-		task.wait(0.4)
+        task.wait(0.4)
 
-		keyGui:Destroy()
+        -- This is the important part from your
+        -- older working key system.
+        _G.NightGUIKeyAccepted = true
 
-		-- Tell the rest of the script that the key
-		-- has been accepted.
-		_G.NightGUIKeyAccepted = true
+        keyGui:Destroy()
 
-	else
+    else
 
-		result.Text = "Incorrect key!"
-		result.TextColor3 = Color3.fromRGB(255, 150, 150)
+        result.Text = "Incorrect key!"
+        result.TextColor3 = Color3.fromRGB(255,150,150)
 
-		keyBox.Text = ""
-	end
+        keyBox.Text = ""
+    end
 end
 
 enterButton.MouseButton1Click:Connect(checkKey)
 
 keyBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		checkKey()
-	end
+
+    if enterPressed then
+        checkKey()
+    end
+
 end)
+
+-- ==========================================
+-- MAIN GUI WAITS FOR KEY
+-- ==========================================
+
+repeat
+    task.wait()
+until _G.NightGUIKeyAccepted
 
 -- gui colours ref 664263
 
