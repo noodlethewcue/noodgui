@@ -4104,94 +4104,6 @@ createButton("morphs", "morph saver", function(enabled)
 
 end)
 
--- cupcake eyes
-local cupcakeOriginal = {}
-
-createButton("clients", "cupcake eyes", function(enabled)
-
-    local character = player.Character
-    if not character then return end
-
-    local scleraNames = {
-        "leftsclera",
-        "leftblind",
-        "rightsclera",
-        "rightblind"
-    }
-
-    local pupilNames = {
-        "leftpupil",
-        "leftpupilblind",
-        "rightpupil",
-        "rightpupilblind"
-    }
-
-    local function findParts(name)
-        local found = {}
-
-        for _, obj in ipairs(character:GetDescendants()) do
-            if obj.Name:lower() == name then
-                table.insert(found, obj)
-            end
-        end
-
-        return found
-    end
-
-    if enabled then
-
-        -- BLACK EYES
-        for _, name in ipairs(scleraNames) do
-            for _, obj in ipairs(findParts(name)) do
-                if obj:IsA("BasePart") then
-
-                    if not cupcakeOriginal[obj] then
-                        cupcakeOriginal[obj] = {
-                            Color = obj.Color,
-                            Material = obj.Material
-                        }
-                    end
-
-                    obj.Color = Color3.fromRGB(0, 0, 0)
-                    obj.Material = Enum.Material.SmoothPlastic
-                end
-            end
-        end
-
-        -- VERY SLIGHT RED GLOW
-        for _, name in ipairs(pupilNames) do
-            for _, obj in ipairs(findParts(name)) do
-                if obj:IsA("BasePart") then
-
-                    if not cupcakeOriginal[obj] then
-                        cupcakeOriginal[obj] = {
-                            Color = obj.Color,
-                            Material = obj.Material
-                        }
-                    end
-
-                    obj.Color = Color3.fromRGB(255, 0, 0)
-
-                    -- Normal material = almost no glow
-                    obj.Material = Enum.Material.SmoothPlastic
-                end
-            end
-        end
-
-    else
-
-        -- RESTORE ORIGINAL APPEARANCE
-        for obj, original in pairs(cupcakeOriginal) do
-            if obj and obj.Parent then
-                obj.Color = original.Color
-                obj.Material = original.Material
-            end
-        end
-
-        table.clear(cupcakeOriginal)
-    end
-end)
-
 -- AGGRESSIVE POSE
 local aggressiveOriginals = {}
 local aggressivePupilOriginals = {}
@@ -4914,4 +4826,135 @@ RunService.RenderStepped:Connect(function()
 		)
 	end
 
+end)
+
+-- ==========================================
+-- CUPCAKELING
+-- ==========================================
+
+local cupcakeOriginal = {}
+
+createButton("clients", "cupcakeling", function(enabled)
+
+    local character = player.Character
+    if not character then return end
+
+    local scleraNames = {
+        leftsclera = true,
+        leftblind = true,
+        rightsclera = true,
+        rightblind = true
+    }
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
+
+    local function isEye(obj)
+        local name = obj.Name:lower()
+        return scleraNames[name] or pupilNames[name]
+    end
+
+    if enabled then
+
+        -- ======================================
+        -- MAKE EVERY PART BLACK
+        -- EXCEPT THE EYES
+        -- ======================================
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                -- Save original appearance
+                if not cupcakeOriginal[obj] then
+                    cupcakeOriginal[obj] = {
+                        Color = obj.Color,
+                        Material = obj.Material
+                    }
+                end
+
+                -- Don't overwrite the eye colours here
+                if not isEye(obj) then
+
+                    obj.Color = Color3.fromRGB(0, 0, 0)
+                    obj.Material = Enum.Material.SmoothPlastic
+
+                end
+            end
+        end
+
+        -- ======================================
+        -- BLACK SCLERA
+        -- ======================================
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                local name = obj.Name:lower()
+
+                if scleraNames[name] then
+
+                    if not cupcakeOriginal[obj] then
+                        cupcakeOriginal[obj] = {
+                            Color = obj.Color,
+                            Material = obj.Material
+                        }
+                    end
+
+                    obj.Color = Color3.fromRGB(0, 0, 0)
+                    obj.Material = Enum.Material.SmoothPlastic
+
+                end
+            end
+        end
+
+        -- ======================================
+        -- RED PUPILS
+        -- ======================================
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                local name = obj.Name:lower()
+
+                if pupilNames[name] then
+
+                    if not cupcakeOriginal[obj] then
+                        cupcakeOriginal[obj] = {
+                            Color = obj.Color,
+                            Material = obj.Material
+                        }
+                    end
+
+obj.Color = Color3.fromRGB(255, 0, 0)
+obj.Material = Enum.Material.Neon
+
+                end
+            end
+        end
+
+    else
+
+        -- ======================================
+        -- RESTORE EVERYTHING
+        -- ======================================
+
+        for obj, original in pairs(cupcakeOriginal) do
+
+            if obj and obj.Parent then
+
+                obj.Color = original.Color
+                obj.Material = original.Material
+
+            end
+        end
+
+        table.clear(cupcakeOriginal)
+    end
 end)
