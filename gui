@@ -598,7 +598,7 @@ scroll.Size = UDim2.new(1,-30,1,-130)
 scroll.BackgroundColor3 = INNER
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 6
-scroll.CanvasSize = UDim2.new(0,0,0,900)
+scroll.CanvasSize = UDim2.new(0,0,0,1200)
 Instance.new("UICorner", scroll).CornerRadius = UDim.new(0,18)
 
 local grid = Instance.new("UIGridLayout")
@@ -4877,6 +4877,10 @@ createButton("clients", "cupcakeling", function(enabled)
     local character = player.Character
     if not character then return end
 
+    -- ======================================
+    -- EYES
+    -- ======================================
+
     local scleraNames = {
         leftsclera = true,
         leftblind = true,
@@ -4891,37 +4895,58 @@ createButton("clients", "cupcakeling", function(enabled)
         rightpupilblind = true
     }
 
-    local function isEye(obj)
-        local name = obj.Name:lower()
-        return scleraNames[name] or pupilNames[name]
+    -- ======================================
+    -- PARTS THAT MUST KEEP THEIR COLOUR
+    -- ======================================
+
+    local excludedNames = {
+        Fang1 = true,
+        Jaw2 = true,
+        Head2 = true,
+        Tongue = true
+    }
+
+    local function isExcluded(obj)
+
+        local name = obj.Name
+
+        -- Eyes stay their own colour
+        if scleraNames[name:lower()]
+        or pupilNames[name:lower()] then
+            return true
+        end
+
+        -- These stay their original colour
+        if excludedNames[name] then
+            return true
+        end
+
+        return false
     end
 
-    if enabled then
+    -- ======================================
+    -- ENABLE
+    -- ======================================
 
-        -- ======================================
-        -- MAKE EVERY PART BLACK
-        -- EXCEPT THE EYES
-        -- ======================================
+    if enabled then
 
         for _, obj in ipairs(character:GetDescendants()) do
 
             if obj:IsA("BasePart") then
 
-                -- Save original appearance
+                -- Save ORIGINAL colour only
+                -- Material is intentionally NOT changed
                 if not cupcakeOriginal[obj] then
                     cupcakeOriginal[obj] = {
-                        Color = obj.Color,
-                        Material = obj.Material
+                        Color = obj.Color
                     }
                 end
 
-                -- Don't overwrite the eye colours here
-                if not isEye(obj) then
-
+                -- Everything except excluded parts becomes black
+                if not isExcluded(obj) then
                     obj.Color = Color3.fromRGB(0, 0, 0)
-                    obj.Material = Enum.Material.SmoothPlastic
-
                 end
+
             end
         end
 
@@ -4936,23 +4961,14 @@ createButton("clients", "cupcakeling", function(enabled)
                 local name = obj.Name:lower()
 
                 if scleraNames[name] then
-
-                    if not cupcakeOriginal[obj] then
-                        cupcakeOriginal[obj] = {
-                            Color = obj.Color,
-                            Material = obj.Material
-                        }
-                    end
-
                     obj.Color = Color3.fromRGB(0, 0, 0)
-                    obj.Material = Enum.Material.SmoothPlastic
-
                 end
+
             end
         end
 
         -- ======================================
-        -- RED PUPILS
+        -- BRIGHT RED PUPILS
         -- ======================================
 
         for _, obj in ipairs(character:GetDescendants()) do
@@ -4962,37 +4978,343 @@ createButton("clients", "cupcakeling", function(enabled)
                 local name = obj.Name:lower()
 
                 if pupilNames[name] then
-
-                    if not cupcakeOriginal[obj] then
-                        cupcakeOriginal[obj] = {
-                            Color = obj.Color,
-                            Material = obj.Material
-                        }
-                    end
-
-obj.Color = Color3.fromRGB(255, 0, 0)
-obj.Material = Enum.Material.Neon
-
+                    obj.Color = Color3.fromRGB(255, 0, 0)
                 end
+
             end
         end
 
-    else
+    -- ======================================
+    -- DISABLE
+    -- ======================================
 
-        -- ======================================
-        -- RESTORE EVERYTHING
-        -- ======================================
+    else
 
         for obj, original in pairs(cupcakeOriginal) do
 
             if obj and obj.Parent then
-
                 obj.Color = original.Color
-                obj.Material = original.Material
-
             end
+
         end
 
         table.clear(cupcakeOriginal)
+
     end
+
+end)
+
+--==================================================
+-- BOUNCY DANCE
+-- CLIENTS BUTTON
+--==================================================
+
+local bouncyDanceConnection = nil
+local bouncyDanceOriginals = {}
+local bouncyDanceTongueMotor = nil
+local bouncyDanceTongueOriginal = nil
+
+createButton("clients", "bouncy dance", function(enabled)
+
+    -- Stop previous animation
+    if bouncyDanceConnection then
+        bouncyDanceConnection:Disconnect()
+        bouncyDanceConnection = nil
+    end
+
+    local character = player.Character
+    if not character then return end
+
+    local J = {}
+    local TAILS = {}
+
+    local function getMotor(name)
+        for _, obj in ipairs(character:GetDescendants()) do
+            if obj:IsA("Motor6D")
+            and obj.Name:lower() == name:lower() then
+                return obj
+            end
+        end
+    end
+
+    -- Find joints
+    for _, name in ipairs({
+        "FLS","FLL","FLW","FLP",
+        "FRS","FRL","FRW","FRP",
+        "BLS","BLL","BLW","BLP",
+        "BRS","BRL","BRW","BRP",
+        "Chest","Mid Torso","Hip",
+        "Head1","neck",
+        "lear","rear",
+        "mouth","jaw"
+    }) do
+
+        local joint = getMotor(name)
+
+        if joint then
+            J[name] = joint
+
+            if not bouncyDanceOriginals[joint] then
+                bouncyDanceOriginals[joint] = joint.C0
+            end
+        end
+    end
+
+    -- Find tail
+    for _, obj in ipairs(character:GetDescendants()) do
+
+        if obj:IsA("Motor6D")
+        and obj.Name:lower():find("tail", 1, true) then
+
+            table.insert(TAILS, obj)
+
+            if not bouncyDanceOriginals[obj] then
+                bouncyDanceOriginals[obj] = obj.C0
+            end
+        end
+    end
+
+    -- Find tongue
+    local tongue = character:FindFirstChild("Tongue", true)
+
+    if tongue then
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("Motor6D")
+            and (obj.Part0 == tongue or obj.Part1 == tongue) then
+
+                bouncyDanceTongueMotor = obj
+
+                if not bouncyDanceTongueOriginal then
+                    bouncyDanceTongueOriginal = obj.C0
+                end
+
+                break
+            end
+        end
+    end
+
+    --==================================================
+    -- RESET
+    --==================================================
+
+    if not enabled then
+
+        for joint, original in pairs(bouncyDanceOriginals) do
+            if joint and joint.Parent then
+                joint.C0 = original
+            end
+        end
+
+        if bouncyDanceTongueMotor
+        and bouncyDanceTongueMotor.Parent
+        and bouncyDanceTongueOriginal then
+
+            bouncyDanceTongueMotor.C0 =
+                bouncyDanceTongueOriginal
+        end
+
+        return
+    end
+
+    --==================================================
+    -- MOVE
+    --==================================================
+
+    local function move(name, x, y, z)
+
+        local joint = J[name]
+
+        if joint and bouncyDanceOriginals[joint] then
+
+            joint.C0 =
+                bouncyDanceOriginals[joint]
+                * CFrame.Angles(
+                    math.rad(x),
+                    math.rad(y),
+                    math.rad(z)
+                )
+
+        end
+    end
+
+    local function moveUp(name, amount)
+
+        local joint = J[name]
+
+        if joint and bouncyDanceOriginals[joint] then
+
+            joint.C0 =
+                bouncyDanceOriginals[joint]
+                * CFrame.new(0, amount, 0)
+
+        end
+    end
+
+    --==================================================
+    -- ANIMATION
+    --==================================================
+
+    local start = os.clock()
+    local speed = 5
+
+    bouncyDanceConnection =
+        RunService.RenderStepped:Connect(function()
+
+            if not character.Parent then
+                return
+            end
+
+            local t = os.clock() - start
+
+            local wave = math.sin(t * speed)
+
+            local pairA = math.max(wave, 0)
+            local pairB = math.max(-wave, 0)
+
+            -- BODY BOUNCE ONLY
+            local bounce =
+                math.abs(math.sin(t * speed))
+
+            moveUp("Chest", bounce * 0.30)
+            moveUp("Mid Torso", bounce * 0.20)
+            moveUp("Hip", bounce * 0.12)
+
+            -- HEAD
+            move(
+                "neck",
+                0,
+                wave * 12,
+                wave * 8
+            )
+
+            move(
+                "Head1",
+                0,
+                -wave * 4,
+                -wave * 5
+            )
+
+            -- EARS
+            local earWave =
+                math.sin(t * speed - 0.45)
+
+            move(
+                "lear",
+                -earWave * 4,
+                earWave * 6,
+                earWave * 10
+            )
+
+            move(
+                "rear",
+                -earWave * 4,
+                earWave * 6,
+                -earWave * 10
+            )
+
+            -- FRONT LEFT + BACK RIGHT
+            move("FLS", -pairA * 22, 0, pairA * 10)
+            move("FLL", pairA * 38, 0, -pairA * 16)
+            move("FLW", -pairA * 58, 0, pairA * 18)
+            move("FLP", pairA * 30, 0, -pairA * 10)
+
+            move("BRS", -pairA * 22, 0, pairA * 10)
+            move("BRL", pairA * 38, 0, -pairA * 16)
+            move("BRW", -pairA * 58, 0, pairA * 18)
+            move("BRP", pairA * 30, 0, -pairA * 10)
+
+            -- FRONT RIGHT + BACK LEFT
+            move("FRS", -pairB * 22, 0, pairB * 10)
+            move("FRL", pairB * 38, 0, -pairB * 16)
+            move("FRW", -pairB * 58, 0, pairB * 18)
+            move("FRP", pairB * 30, 0, -pairB * 10)
+
+            move("BLS", -pairB * 22, 0, pairB * 10)
+            move("BLL", pairB * 38, 0, -pairB * 16)
+            move("BLW", -pairB * 58, 0, pairB * 18)
+            move("BLP", pairB * 30, 0, -pairB * 10)
+
+            -- JAW / TONGUE
+            local bounceNumber =
+                math.floor(t * speed / math.pi)
+
+            local bounceProgress =
+                (t * speed) % math.pi
+
+            local mouthWave =
+                math.sin(bounceProgress)
+
+            -- JAW
+            if bounceNumber % 2 == 0 then
+
+                move(
+                    "jaw",
+                    -mouthWave * 10,
+                    0,
+                    0
+                )
+
+                move(
+                    "mouth",
+                    -mouthWave * 3,
+                    0,
+                    0
+                )
+
+                if bouncyDanceTongueMotor
+                and bouncyDanceTongueOriginal then
+
+                    bouncyDanceTongueMotor.C0 =
+                        bouncyDanceTongueOriginal
+                end
+
+            -- TONGUE
+            else
+
+                move("jaw", 0, 0, 0)
+                move("mouth", 0, 0, 0)
+
+                if bouncyDanceTongueMotor
+                and bouncyDanceTongueOriginal then
+
+                    bouncyDanceTongueMotor.C0 =
+                        bouncyDanceTongueOriginal
+                        * CFrame.new(
+                            0,
+                            -0.12 * mouthWave,
+                            -0.015 * mouthWave
+                        )
+                end
+            end
+
+            -- TAIL
+            for i, joint in ipairs(TAILS) do
+
+                local tailWave =
+                    math.sin(
+                        t * speed
+                        - i * 0.35
+                        - 0.2
+                    )
+
+                if bouncyDanceOriginals[joint] then
+
+                    joint.C0 =
+                        bouncyDanceOriginals[joint]
+                        * CFrame.Angles(
+                            math.rad(
+                                tailWave * (3 + i)
+                            ),
+                            math.rad(
+                                tailWave * (6 + i * 1.5)
+                            ),
+                            math.rad(
+                                tailWave * (7 + i * 2)
+                            )
+                        )
+                end
+            end
+        end)
 end)
