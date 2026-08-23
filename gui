@@ -4,6 +4,24 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
+
+-- AUTO REFRESH CHARACTER AFTER MORPH/RESET
+player.CharacterAdded:Connect(function(newCharacter)
+    task.wait(0.5)
+
+    -- update the character used by your animations
+    char = newCharacter
+
+    -- turn dances off so old joints aren't used
+    if stupidDance1 ~= nil then
+        stupidDance1 = false
+    end
+
+    if stupidDance2 ~= nil then
+        stupidDance2 = false
+    end
+end)
+
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ==========================================
@@ -4413,418 +4431,438 @@ createButton("clients", "scared", function(enabled)
     end
 end)
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-
-local function get(name)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("Motor6D") and obj.Name:lower() == name:lower() then
-			return obj
-		end
-	end
-end
-
-local function getContaining(text)
-	local r = {}
-
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("Motor6D") and obj.Name:lower():find(text:lower(),1,true) then
-			table.insert(r,obj)
-		end
-	end
-
-	return r
-end
-
-local J = {
-	FLS=get("FLS"),FLL=get("FLL"),FLW=get("FLW"),FLP=get("FLP"),
-	FRS=get("FRS"),FRL=get("FRL"),FRW=get("FRW"),FRP=get("FRP"),
-
-	BLS=get("BLS"),BLL=get("BLL"),BLW=get("BLW"),BLP=get("BLP"),
-	BRS=get("BRS"),BRL=get("BRL"),BRW=get("BRW"),BRP=get("BRP"),
-
-	Chest=get("Chest"),
-	MidTorso=get("Mid Torso"),
-	Hip=get("Hip"),
-	Head=get("Head1"),
-	Neck=get("neck"),
-
-	LeftLid=get("leftlid"),
-	RightLid=get("rightlid"),
-
-	Mouth=get("mouth"),
-	Jaw=get("jaw")
-}
-
-local tailJoints = getContaining("tail")
-
-local original = {}
-
-for _,joint in pairs(J) do
-	if joint and joint:IsA("Motor6D") then
-		original[joint] = joint.C0
-	end
-end
-
-for _,joint in ipairs(tailJoints) do
-	original[joint] = joint.C0
-end
-
-local function move(name,x,y,z)
-
-	local joint=J[name]
-
-	if joint and original[joint] then
-		joint.C0 =
-			original[joint] *
-			CFrame.Angles(
-				math.rad(x),
-				math.rad(y),
-				math.rad(z)
-			)
-	end
-end
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-
-local function getMotor(name)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("Motor6D") and obj.Name:lower() == name:lower() then
-			return obj
-		end
-	end
-end
-
-local function getTail()
-	local result = {}
-
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("Motor6D") and obj.Name:lower():find("tail", 1, true) then
-			table.insert(result, obj)
-		end
-	end
-
-	return result
-end
-
-local J = {
-	FLS = getMotor("FLS"),
-	FLL = getMotor("FLL"),
-	FLW = getMotor("FLW"),
-	FLP = getMotor("FLP"),
-
-	FRS = getMotor("FRS"),
-	FRL = getMotor("FRL"),
-	FRW = getMotor("FRW"),
-	FRP = getMotor("FRP"),
-
-	BLS = getMotor("BLS"),
-	BLL = getMotor("BLL"),
-	BLW = getMotor("BLW"),
-	BLP = getMotor("BLP"),
-
-	BRS = getMotor("BRS"),
-	BRL = getMotor("BRL"),
-	BRW = getMotor("BRW"),
-	BRP = getMotor("BRP"),
-
-	Chest = getMotor("Chest"),
-	MidTorso = getMotor("Mid Torso"),
-	Hip = getMotor("Hip"),
-	Head = getMotor("Head1"),
-	Neck = getMotor("neck"),
-	Mouth = getMotor("mouth"),
-	Jaw = getMotor("jaw")
-}
-
-local tails = getTail()
-
-local original = {}
-
-for _, joint in pairs(J) do
-	if joint then
-		original[joint] = joint.C0
-	end
-end
-
-for _, joint in ipairs(tails) do
-	original[joint] = joint.C0
-end
-
-local function move(jointName, x, y, z)
-	local joint = J[jointName]
-
-	if joint and original[joint] then
-		joint.C0 =
-			original[joint] *
-			CFrame.Angles(
-				math.rad(x),
-				math.rad(y),
-				math.rad(z)
-			)
-	end
-end
 
 local stupidDance1 = false
 local stupidDance2 = false
 local danceStart = 0
 
-local function reset()
-	for joint, c0 in pairs(original) do
-		if joint and joint.Parent then
-			joint.C0 = c0
-		end
-	end
+local char
+local J = {}
+local tails = {}
+local original = {}
+
+--==================================================
+-- REFRESH CURRENT CHARACTER
+--==================================================
+
+local function refreshDance()
+
+    char = player.Character or player.CharacterAdded:Wait()
+
+    J = {}
+    tails = {}
+    original = {}
+
+    local function getMotor(name)
+
+        for _, obj in ipairs(char:GetDescendants()) do
+
+            if obj:IsA("Motor6D")
+            and obj.Name:lower() == name:lower() then
+
+                return obj
+
+            end
+        end
+    end
+
+    J = {
+        FLS = getMotor("FLS"),
+        FLL = getMotor("FLL"),
+        FLW = getMotor("FLW"),
+        FLP = getMotor("FLP"),
+
+        FRS = getMotor("FRS"),
+        FRL = getMotor("FRL"),
+        FRW = getMotor("FRW"),
+        FRP = getMotor("FRP"),
+
+        BLS = getMotor("BLS"),
+        BLL = getMotor("BLL"),
+        BLW = getMotor("BLW"),
+        BLP = getMotor("BLP"),
+
+        BRS = getMotor("BRS"),
+        BRL = getMotor("BRL"),
+        BRW = getMotor("BRW"),
+        BRP = getMotor("BRP"),
+
+        Chest = getMotor("Chest"),
+        MidTorso = getMotor("Mid Torso"),
+        Hip = getMotor("Hip"),
+
+        Head = getMotor("Head1"),
+        Neck = getMotor("neck"),
+
+        Mouth = getMotor("mouth"),
+        Jaw = getMotor("jaw")
+    }
+
+    for _, obj in ipairs(char:GetDescendants()) do
+
+        if obj:IsA("Motor6D")
+        and obj.Name:lower():find("tail", 1, true) then
+
+            table.insert(tails, obj)
+
+        end
+    end
+
+    -- Save ORIGINAL positions of this new character
+    for _, joint in pairs(J) do
+
+        if joint then
+            original[joint] = joint.C0
+        end
+
+    end
+
+    for _, joint in ipairs(tails) do
+        original[joint] = joint.C0
+    end
 end
 
--- =====================================================
--- STUPID DANCE 1
--- =====================================================
+
+--==================================================
+-- MOVE JOINT
+--==================================================
+
+local function move(name, x, y, z)
+
+    local joint = J[name]
+
+    if joint and original[joint] then
+
+        joint.C0 =
+            original[joint]
+            * CFrame.Angles(
+                math.rad(x),
+                math.rad(y),
+                math.rad(z)
+            )
+
+    end
+end
+
+
+--==================================================
+-- RESET
+--==================================================
+
+local function resetDance()
+
+    for joint, c0 in pairs(original) do
+
+        if joint and joint.Parent then
+            joint.C0 = c0
+        end
+
+    end
+end
+
+
+--==================================================
+-- DANCE 1
+--==================================================
 
 createButton("clients", "stupid dance 1", function(enabled)
 
-	stupidDance1 = enabled
+    if enabled then
 
-	if enabled then
-		stupidDance2 = false
-		danceStart = os.clock()
-	else
-		reset()
-	end
+        -- IMPORTANT:
+        -- Get the CURRENT morph
+        refreshDance()
 
+        stupidDance1 = true
+        stupidDance2 = false
+        danceStart = os.clock()
+
+    else
+
+        stupidDance1 = false
+        resetDance()
+
+    end
 end)
 
--- =====================================================
--- STUPID DANCE 2
--- =====================================================
+
+--==================================================
+-- DANCE 2
+--==================================================
 
 createButton("clients", "stupid dance 2", function(enabled)
 
-	stupidDance2 = enabled
+    if enabled then
 
-	if enabled then
-		stupidDance1 = false
-		danceStart = os.clock()
-	else
-		reset()
-	end
+        -- IMPORTANT:
+        -- Get the CURRENT morph
+        refreshDance()
 
+        stupidDance2 = true
+        stupidDance1 = false
+        danceStart = os.clock()
+
+    else
+
+        stupidDance2 = false
+        resetDance()
+
+    end
 end)
 
--- =====================================================
--- CLIENT ANIMATION LOOP
--- =====================================================
+
+--==================================================
+-- ANIMATION LOOP
+--==================================================
 
 RunService.RenderStepped:Connect(function()
 
-	if not char.Parent then
-		return
-	end
+    if not char or not char.Parent then
+        return
+    end
 
-	if not stupidDance1 and not stupidDance2 then
-		return
-	end
+    if not stupidDance1 and not stupidDance2 then
+        return
+    end
 
-	local t = (os.clock() - danceStart)
+    local t = os.clock() - danceStart
 
-	-- =================================================
-	-- DANCE 1
-	-- =================================================
 
-	if stupidDance1 then
+    --================================================
+    -- DANCE 1
+    --================================================
 
-		t = t * 5
+    if stupidDance1 then
 
-		local a = math.sin(t)
-		local b = math.sin(t * 2)
+        t = t * 5
 
-		-- BODY
-		move("Chest", b * 12, a * 8, math.cos(t) * 10)
-		move("MidTorso", -b * 8, -a * 5, -math.cos(t) * 7)
-		move("Hip", b * 10, -a * 10, math.cos(t) * 12)
+        local a = math.sin(t)
+        local b = math.sin(t * 2)
 
-		-- HEAD
-		move("Neck",
-			math.sin(t * 2) * 12,
-			math.sin(t) * 20,
-			math.cos(t * 2) * 18
-		)
+        -- BODY
+        move("Chest", b * 12, a * 8, math.cos(t) * 10)
+        move("MidTorso", -b * 8, -a * 5, -math.cos(t) * 7)
+        move("Hip", b * 10, -a * 10, math.cos(t) * 12)
 
-		move("Head",
-			math.sin(t * 2) * 8,
-			math.cos(t * 1.5) * 12,
-			math.sin(t) * 15
-		)
+        -- HEAD / NECK
+        move(
+            "Neck",
+            math.sin(t * 2) * 12,
+            math.sin(t) * 20,
+            math.cos(t * 2) * 18
+        )
 
-		-- FRONT LEFT
-		local fl = math.sin(t)
+        move(
+            "Head",
+            math.sin(t * 2) * 8,
+            math.cos(t * 1.5) * 12,
+            math.sin(t) * 15
+        )
 
-		move("FLW", -fl * 65, 0, fl * 15)
-		move("FLP", -fl * 45, 0, fl * 12)
-		move("FLL", fl * 35, 0, -fl * 10)
-		move("FLS", fl * 45, 0, fl * 8)
+        -- FRONT LEFT
+        local fl = math.sin(t)
 
-		-- FRONT RIGHT
-		local fr = math.sin(t + math.pi)
+        move("FLW", -fl * 65, 0, fl * 15)
+        move("FLP", -fl * 45, 0, fl * 12)
+        move("FLL", fl * 35, 0, -fl * 10)
+        move("FLS", fl * 45, 0, fl * 8)
 
-		move("FRW", -fr * 65, 0, fr * 15)
-		move("FRP", -fr * 45, 0, fr * 12)
-		move("FRL", fr * 35, 0, -fr * 10)
-		move("FRS", fr * 45, 0, fr * 8)
+        -- FRONT RIGHT
+        local fr = math.sin(t + math.pi)
 
-		-- BACK LEFT
-		local bl = math.sin(t + math.pi / 2)
+        move("FRW", -fr * 65, 0, fr * 15)
+        move("FRP", -fr * 45, 0, fr * 12)
+        move("FRL", fr * 35, 0, -fr * 10)
+        move("FRS", fr * 45, 0, fr * 8)
 
-		move("BLW", -bl * 70, 0, bl * 18)
-		move("BLP", -bl * 50, 0, bl * 15)
-		move("BLL", bl * 40, 0, -bl * 12)
-		move("BLS", bl * 50, 0, bl * 10)
+        -- BACK LEFT
+        local bl = math.sin(t + math.pi / 2)
 
-		-- BACK RIGHT
-		local br = math.sin(t - math.pi / 2)
+        move("BLW", -bl * 70, 0, bl * 18)
+        move("BLP", -bl * 50, 0, bl * 15)
+        move("BLL", bl * 40, 0, -bl * 12)
+        move("BLS", bl * 50, 0, bl * 10)
 
-		move("BRW", -br * 70, 0, br * 18)
-		move("BRP", -br * 50, 0, br * 15)
-		move("BRL", br * 40, 0, -br * 12)
-		move("BRS", br * 50, 0, br * 10)
+        -- BACK RIGHT
+        local br = math.sin(t - math.pi / 2)
 
-		-- TAIL
-		for i, joint in ipairs(tails) do
-			local wave = math.sin(t * 1.8 - i * 0.55)
-			local wave2 = math.cos(t * 1.8 - i * 0.55)
+        move("BRW", -br * 70, 0, br * 18)
+        move("BRP", -br * 50, 0, br * 15)
+        move("BRL", br * 40, 0, -br * 12)
+        move("BRS", br * 50, 0, br * 10)
 
-			joint.C0 =
-				original[joint] *
-				CFrame.Angles(
-					math.rad(wave * (8 + i * 4)),
-					math.rad(wave2 * (12 + i * 5)),
-					math.rad(wave * (15 + i * 5))
-				)
-		end
+        -- TAIL
+        for i, joint in ipairs(tails) do
 
-		-- JAW
-		local jaw = math.abs(math.sin(t * 2.2))
+            local wave =
+                math.sin(t * 1.8 - i * 0.55)
 
-		move("Jaw",
-			-jaw * 40,
-			math.sin(t * 4) * 10,
-			math.cos(t * 2.2) * 6
-		)
+            local wave2 =
+                math.cos(t * 1.8 - i * 0.55)
 
-		move("Mouth",
-			-jaw * 25,
-			math.sin(t * 2) * 10,
-			math.cos(t * 2) * 15
-		)
+            joint.C0 =
+                original[joint]
+                * CFrame.Angles(
+                    math.rad(wave * (8 + i * 4)),
+                    math.rad(wave2 * (12 + i * 5)),
+                    math.rad(wave * (15 + i * 5))
+                )
 
-	end
+        end
 
-	-- =================================================
-	-- DANCE 2
-	-- =================================================
+        -- JAW
+        local jaw =
+            math.abs(math.sin(t * 2.2))
 
-	if stupidDance2 then
+        move(
+            "Jaw",
+            -jaw * 40,
+            math.sin(t * 4) * 10,
+            math.cos(t * 2.2) * 6
+        )
 
-		t = t * 3.5
+        move(
+            "Mouth",
+            -jaw * 25,
+            math.sin(t * 2) * 10,
+            math.cos(t * 2) * 15
+        )
 
-		local sway = math.sin(t)
+    end
 
-		-- BIG BODY SWING
-		move("Chest",
-			sway * 18,
-			math.sin(t * 2) * 8,
-			sway * 22
-		)
 
-		move("MidTorso",
-			-sway * 12,
-			-math.sin(t * 2) * 5,
-			-sway * 14
-		)
+    --================================================
+    -- DANCE 2
+    --================================================
 
-		move("Hip",
-			sway * 15,
-			-math.sin(t * 2) * 10,
-			sway * 18
-		)
+    if stupidDance2 then
 
-		-- HEAD
-		move("Neck",
-			math.sin(t * 1.5) * 15,
-			math.sin(t) * 28,
-			math.cos(t * 1.5) * 22
-		)
+        t = t * 3.5
 
-		move("Head",
-			math.sin(t * 1.5) * 12,
-			math.cos(t) * 18,
-			math.sin(t) * 25
-		)
+        local sway = math.sin(t)
 
-		-- FRONT LEGS
-		local fl = math.sin(t)
-		local fr = math.sin(t + math.pi)
+        -- BODY
+        move(
+            "Chest",
+            sway * 18,
+            math.sin(t * 2) * 8,
+            sway * 22
+        )
 
-		move("FLW", -fl * 80, 0, fl * 25)
-		move("FLP", -fl * 55, 0, fl * 20)
-		move("FLL", fl * 45, 0, -fl * 18)
-		move("FLS", fl * 55, 0, fl * 15)
+        move(
+            "MidTorso",
+            -sway * 12,
+            -math.sin(t * 2) * 5,
+            -sway * 14
+        )
 
-		move("FRW", -fr * 80, 0, fr * 25)
-		move("FRP", -fr * 55, 0, fr * 20)
-		move("FRL", fr * 45, 0, -fr * 18)
-		move("FRS", fr * 55, 0, fr * 15)
+        move(
+            "Hip",
+            sway * 15,
+            -math.sin(t * 2) * 10,
+            sway * 18
+        )
 
-		-- BACK LEGS KICK
-		local bl = math.sin(t + math.pi / 2)
-		local br = math.sin(t - math.pi / 2)
+        -- HEAD / NECK
+        move(
+            "Neck",
+            math.sin(t * 1.5) * 15,
+            math.sin(t) * 28,
+            math.cos(t * 1.5) * 22
+        )
 
-		move("BLW", -bl * 75, 0, bl * 20)
-		move("BLP", -bl * 55, 0, bl * 18)
-		move("BLL", bl * 45, 0, -bl * 15)
-		move("BLS", bl * 50, 0, bl * 12)
+        move(
+            "Head",
+            math.sin(t * 1.5) * 12,
+            math.cos(t) * 18,
+            math.sin(t) * 25
+        )
 
-		move("BRW", -br * 75, 0, br * 20)
-		move("BRP", -br * 55, 0, br * 18)
-		move("BRL", br * 45, 0, -br * 15)
-		move("BRS", br * 50, 0, br * 12)
+        -- FRONT LEGS
+        local fl = math.sin(t)
+        local fr = math.sin(t + math.pi)
 
-		-- TAIL WHIP
-		for i, joint in ipairs(tails) do
-			local wave = math.sin(t * 2 - i * 0.7)
-			local wave2 = math.cos(t * 2 - i * 0.7)
+        move("FLW", -fl * 80, 0, fl * 25)
+        move("FLP", -fl * 55, 0, fl * 20)
+        move("FLL", fl * 45, 0, -fl * 18)
+        move("FLS", fl * 55, 0, fl * 15)
 
-			joint.C0 =
-				original[joint] *
-				CFrame.Angles(
-					math.rad(wave * (12 + i * 5)),
-					math.rad(wave2 * (18 + i * 7)),
-					math.rad(wave * (20 + i * 7))
-				)
-		end
+        move("FRW", -fr * 80, 0, fr * 25)
+        move("FRP", -fr * 55, 0, fr * 20)
+        move("FRL", fr * 45, 0, -fr * 18)
+        move("FRS", fr * 55, 0, fr * 15)
 
-		-- JAW
-		local jaw = math.abs(math.sin(t * 2.5))
+        -- BACK LEGS
+        local bl = math.sin(t + math.pi / 2)
+        local br = math.sin(t - math.pi / 2)
 
-		move("Jaw",
-			-jaw * 48,
-			math.sin(t * 5) * 12,
-			math.cos(t * 2.5) * 8
-		)
+        move("BLW", -bl * 75, 0, bl * 20)
+        move("BLP", -bl * 55, 0, bl * 18)
+        move("BLL", bl * 45, 0, -bl * 15)
+        move("BLS", bl * 50, 0, bl * 12)
 
-		move("Mouth",
-			-jaw * 20,
-			math.sin(t * 4) * 12,
-			math.cos(t * 3) * 12
-		)
-	end
+        move("BRW", -br * 75, 0, br * 20)
+        move("BRP", -br * 55, 0, br * 18)
+        move("BRL", br * 45, 0, -br * 15)
+        move("BRS", br * 50, 0, br * 12)
+
+        -- TAIL
+        for i, joint in ipairs(tails) do
+
+            local wave =
+                math.sin(t * 2 - i * 0.7)
+
+            local wave2 =
+                math.cos(t * 2 - i * 0.7)
+
+            joint.C0 =
+                original[joint]
+                * CFrame.Angles(
+                    math.rad(wave * (12 + i * 5)),
+                    math.rad(wave2 * (18 + i * 7)),
+                    math.rad(wave * (20 + i * 7))
+                )
+
+        end
+
+        -- JAW
+        local jaw =
+            math.abs(math.sin(t * 2.5))
+
+        move(
+            "Jaw",
+            -jaw * 48,
+            math.sin(t * 5) * 12,
+            math.cos(t * 2.5) * 8
+        )
+
+        move(
+            "Mouth",
+            -jaw * 20,
+            math.sin(t * 4) * 12,
+            math.cos(t * 3) * 12
+        )
+
+    end
+end)
+
+
+--==================================================
+-- MORPH RESET FIX
+--==================================================
+
+player.CharacterAdded:Connect(function(newCharacter)
+
+    -- Stop the old dance
+    stupidDance1 = false
+    stupidDance2 = false
+
+    -- Wait for the new morph to finish loading
+    task.wait(1)
+
+    -- Get the NEW Motor6Ds
+    refreshDance()
 
 end)
 
