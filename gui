@@ -53,7 +53,7 @@ _G.NightGUIKeyAccepted = false
 -- KEY SYSTEM
 -- ==========================================
 
-local CORRECT_KEY = "cupcake"
+local CORRECT_KEY = "mommyasmr"
 
 -- Remove an old key window if one exists
 local playerGui = player:WaitForChild("PlayerGui")
@@ -5318,3 +5318,940 @@ createButton("clients", "bouncy dance", function(enabled)
             end
         end)
 end)
+
+--==================================================
+-- COLOUR FINDER
+-- FINAL VERSION
+--==================================================
+
+local colourFinderGui
+local colourFinderOpen = false
+
+local selectedTone = nil
+local selectedColour = nil
+local colourVariety = 0.35
+
+--==================================================
+-- COLOUR OPTIONS
+-- NO PINK
+-- PURPLE = DARK PINKISH PURPLE
+--==================================================
+
+local colourOptions = {
+
+    {
+        name = "red",
+        hue = 0.000
+    },
+
+    {
+        name = "orange",
+        hue = 0.060
+    },
+
+    {
+        name = "yellow",
+        -- pure yellow, less green
+        hue = 0.125
+    },
+
+    {
+        name = "green",
+        -- deep muted pine green
+        hue = 0.330
+    },
+
+    {
+        name = "blue",
+        -- slightly toward purple
+        hue = 0.625
+    },
+
+    {
+        name = "purple",
+        -- dark pinkish-purple
+        hue = 0.900
+    }
+}
+
+--==================================================
+-- DESTROY
+--==================================================
+
+local function destroyColourFinder()
+
+    if colourFinderGui then
+        colourFinderGui:Destroy()
+        colourFinderGui = nil
+    end
+
+    colourFinderOpen = false
+end
+
+--==================================================
+-- TEXT SHADOW
+--==================================================
+
+local function colourShadowText(parent,text,size)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = SHADOW
+    shadow.TextXAlignment = Enum.TextXAlignment.Center
+    shadow.TextYAlignment = Enum.TextYAlignment.Center
+
+    local real = shadow:Clone()
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Position = UDim2.new(0,0,0,0)
+    real.TextColor3 = TEXT
+
+    return real
+end
+
+--==================================================
+-- CLEAR TEXT
+--==================================================
+
+local function clearText(holder)
+
+    for _,child in ipairs(holder:GetChildren()) do
+
+        if child.Name == "ShadowText"
+        or child.Name == "RealText" then
+
+            child:Destroy()
+
+        end
+
+    end
+end
+
+--==================================================
+-- OPEN
+--==================================================
+
+local function openColourFinder()
+
+    if colourFinderOpen then
+        return
+    end
+
+    colourFinderOpen = true
+
+    colourFinderGui = Instance.new("ScreenGui")
+    colourFinderGui.Name = "ColourFinderGui"
+    colourFinderGui.ResetOnSpawn = false
+    colourFinderGui.IgnoreGuiInset = true
+    colourFinderGui.DisplayOrder = 999998
+    colourFinderGui.Parent = player.PlayerGui
+
+    --==================================================
+    -- MAIN FRAME
+    --==================================================
+
+    local frame = Instance.new("Frame")
+    frame.Parent = colourFinderGui
+    frame.Size = UDim2.new(0,430,0,480)
+    frame.Position = UDim2.new(0.5,-215,0.5,-240)
+    frame.BackgroundColor3 = MAIN
+    frame.BorderSizePixel = 0
+    frame.Active = true
+
+    Instance.new("UICorner",frame).CornerRadius = UDim.new(0,25)
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    do
+
+        local dragging = false
+        local dragStart
+        local startPos
+
+        frame.InputBegan:Connect(function(input)
+
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+
+                input.Changed:Connect(function()
+
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+
+                end)
+
+            end
+
+        end)
+
+        UIS.InputChanged:Connect(function(input)
+
+            if not dragging then
+                return
+            end
+
+            if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+                local delta = input.Position - dragStart
+
+                frame.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+
+            end
+
+        end)
+
+    end
+
+    --==================================================
+    -- TITLE
+    --==================================================
+
+    local title = Instance.new("Frame")
+    title.Parent = frame
+    title.Size = UDim2.new(0,230,0,48)
+    title.Position = UDim2.new(0,15,0,-5)
+    title.BackgroundColor3 = RAISED
+    title.BorderSizePixel = 0
+
+    Instance.new("UICorner",title).CornerRadius = UDim.new(0,17)
+
+    colourShadowText(
+        title,
+        "colour finder",
+        25
+    )
+
+    --==================================================
+    -- MINIMISE
+    --==================================================
+
+    local minimizeHolder = Instance.new("Frame")
+    minimizeHolder.Parent = frame
+    minimizeHolder.Size = UDim2.new(0,45,0,45)
+    minimizeHolder.Position = UDim2.new(1,-60,0,-5)
+    minimizeHolder.BackgroundColor3 = TAB
+    minimizeHolder.BorderSizePixel = 0
+
+    Instance.new("UICorner",minimizeHolder).CornerRadius = UDim.new(0,14)
+
+    local minimizeButton = Instance.new("TextButton")
+    minimizeButton.Parent = minimizeHolder
+    minimizeButton.Size = UDim2.new(1,0,1,0)
+    minimizeButton.BackgroundTransparency = 1
+    minimizeButton.Text = ""
+
+    colourShadowText(
+        minimizeHolder,
+        "-",
+        27
+    )
+
+    local minimized = false
+    local savedSize = frame.Size
+
+    minimizeButton.MouseButton1Click:Connect(function()
+
+        if not minimized then
+
+            savedSize = frame.Size
+            minimized = true
+
+            for _,child in ipairs(frame:GetChildren()) do
+
+                if child ~= title
+                and child ~= minimizeHolder then
+
+                    if child:IsA("GuiObject") then
+                        child.Visible = false
+                    end
+
+                end
+
+            end
+
+            frame.Size = UDim2.new(
+                0,
+                430,
+                0,
+                60
+            )
+
+        else
+
+            minimized = false
+
+            frame.Size = savedSize
+
+            for _,child in ipairs(frame:GetChildren()) do
+
+                if child:IsA("GuiObject") then
+                    child.Visible = true
+                end
+
+            end
+
+        end
+
+    end)
+
+    --==================================================
+    -- SECTION
+    --==================================================
+
+    local function createSection(y,height)
+
+        local section = Instance.new("Frame")
+        section.Parent = frame
+        section.Size = UDim2.new(1,-30,0,height)
+        section.Position = UDim2.new(0,15,0,y)
+        section.BackgroundColor3 = INNER
+        section.BorderSizePixel = 0
+
+        Instance.new("UICorner",section).CornerRadius = UDim.new(0,16)
+
+        return section
+    end
+
+    --==================================================
+    -- TONE
+    --==================================================
+
+    local toneSection = createSection(55,78)
+
+    local toneTitle = Instance.new("TextLabel")
+    toneTitle.Parent = toneSection
+    toneTitle.Size = UDim2.new(1,-20,0,22)
+    toneTitle.Position = UDim2.new(0,10,0,5)
+    toneTitle.BackgroundTransparency = 1
+    toneTitle.Text = "tone"
+    toneTitle.Font = Enum.Font.FredokaOne
+    toneTitle.TextSize = 16
+    toneTitle.TextColor3 = TEXT
+
+    local toneButtons = {}
+
+    local function selectTone(name)
+
+        selectedTone = name
+
+        for toneName,holder in pairs(toneButtons) do
+
+            clearText(holder)
+
+            if toneName == name then
+
+                holder.BackgroundColor3 = BUTTON_CLICK
+
+                colourShadowText(
+                    holder,
+                    "✓ "..toneName,
+                    18
+                )
+
+            else
+
+                holder.BackgroundColor3 = BUTTON
+
+                colourShadowText(
+                    holder,
+                    toneName,
+                    18
+                )
+
+            end
+
+        end
+
+    end
+
+    for i,name in ipairs({"light","dark"}) do
+
+        local holder = Instance.new("Frame")
+        holder.Parent = toneSection
+        holder.Size = UDim2.new(0,185,0,35)
+        holder.Position = UDim2.new(
+            0,
+            10 + (i-1)*195,
+            0,
+            32
+        )
+        holder.BackgroundColor3 = BUTTON
+        holder.BorderSizePixel = 0
+
+        Instance.new("UICorner",holder).CornerRadius = UDim.new(0,12)
+
+        local button = Instance.new("TextButton")
+        button.Parent = holder
+        button.Size = UDim2.new(1,0,1,0)
+        button.BackgroundTransparency = 1
+        button.Text = ""
+
+        colourShadowText(holder,name,18)
+
+        toneButtons[name] = holder
+
+        button.MouseButton1Click:Connect(function()
+            selectTone(name)
+        end)
+
+    end
+
+    --==================================================
+    -- COLOUR
+    --==================================================
+
+    local colourSection = createSection(143,118)
+
+    local colourTitle = Instance.new("TextLabel")
+    colourTitle.Parent = colourSection
+    colourTitle.Size = UDim2.new(1,-20,0,22)
+    colourTitle.Position = UDim2.new(0,10,0,5)
+    colourTitle.BackgroundTransparency = 1
+    colourTitle.Text = "colour"
+    colourTitle.Font = Enum.Font.FredokaOne
+    colourTitle.TextSize = 16
+    colourTitle.TextColor3 = TEXT
+
+    local colourScroll = Instance.new("ScrollingFrame")
+    colourScroll.Parent = colourSection
+    colourScroll.Position = UDim2.new(0,10,0,32)
+    colourScroll.Size = UDim2.new(1,-20,0,75)
+    colourScroll.BackgroundTransparency = 1
+    colourScroll.BorderSizePixel = 0
+    colourScroll.ScrollBarThickness = 5
+    colourScroll.ScrollingDirection = Enum.ScrollingDirection.X
+    colourScroll.CanvasSize = UDim2.new(0,0,0,0)
+
+    local colourLayout = Instance.new("UIListLayout")
+    colourLayout.Parent = colourScroll
+    colourLayout.FillDirection = Enum.FillDirection.Horizontal
+    colourLayout.Padding = UDim.new(0,8)
+    colourLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local colourButtons = {}
+
+    local function selectColour(option)
+
+        selectedColour = option
+
+        for name,holder in pairs(colourButtons) do
+
+            clearText(holder)
+
+            if name == option.name then
+
+                holder.BackgroundColor3 = BUTTON_CLICK
+
+                colourShadowText(
+                    holder,
+                    "✓ "..name,
+                    16
+                )
+
+            else
+
+                holder.BackgroundColor3 = BUTTON
+
+                colourShadowText(
+                    holder,
+                    name,
+                    16
+                )
+
+            end
+
+        end
+
+    end
+
+    for _,option in ipairs(colourOptions) do
+
+        local holder = Instance.new("Frame")
+        holder.Parent = colourScroll
+        holder.Size = UDim2.new(0,105,0,42)
+        holder.BackgroundColor3 = BUTTON
+        holder.BorderSizePixel = 0
+
+        Instance.new("UICorner",holder).CornerRadius = UDim.new(0,12)
+
+        local button = Instance.new("TextButton")
+        button.Parent = holder
+        button.Size = UDim2.new(1,0,1,0)
+        button.BackgroundTransparency = 1
+        button.Text = ""
+
+        colourShadowText(
+            holder,
+            option.name,
+            16
+        )
+
+        colourButtons[option.name] = holder
+
+        button.MouseButton1Click:Connect(function()
+            selectColour(option)
+        end)
+
+    end
+
+    task.defer(function()
+
+        colourScroll.CanvasSize = UDim2.new(
+            0,
+            colourLayout.AbsoluteContentSize.X + 10,
+            0,
+            0
+        )
+
+    end)
+
+    --==================================================
+    -- COLOUR VARIETY
+    --==================================================
+
+    local varietySection = createSection(271,92)
+
+    local varietyTitle = Instance.new("TextLabel")
+    varietyTitle.Parent = varietySection
+    varietyTitle.Size = UDim2.new(1,-20,0,22)
+    varietyTitle.Position = UDim2.new(0,10,0,5)
+    varietyTitle.BackgroundTransparency = 1
+    varietyTitle.Text = "colour variety"
+    varietyTitle.Font = Enum.Font.FredokaOne
+    varietyTitle.TextSize = 16
+    varietyTitle.TextColor3 = TEXT
+
+    local slider = Instance.new("Frame")
+    slider.Parent = varietySection
+    slider.Size = UDim2.new(1,-50,0,5)
+    slider.Position = UDim2.new(0,25,0,55)
+    slider.BackgroundColor3 = RAISED
+    slider.BorderSizePixel = 0
+
+    Instance.new("UICorner",slider).CornerRadius = UDim.new(1,0)
+
+    local knob = Instance.new("TextButton")
+    knob.Parent = slider
+    knob.Size = UDim2.new(0,22,0,22)
+    knob.AnchorPoint = Vector2.new(0.5,0.5)
+    knob.Position = UDim2.new(colourVariety,0,0.5,0)
+    knob.BackgroundColor3 = BUTTON_CLICK
+    knob.BorderSizePixel = 0
+    knob.Text = ""
+
+    Instance.new("UICorner",knob).CornerRadius = UDim.new(1,0)
+
+    local draggingSlider = false
+
+    local function updateSlider(x)
+
+        local left = slider.AbsolutePosition.X
+        local width = slider.AbsoluteSize.X
+
+        local value = math.clamp(
+            (x-left)/width,
+            0,
+            1
+        )
+
+        colourVariety = value
+
+        knob.Position = UDim2.new(
+            value,
+            0,
+            0.5,
+            0
+        )
+
+    end
+
+    knob.InputBegan:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            draggingSlider = true
+
+        end
+
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+
+        if not draggingSlider then
+            return
+        end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            updateSlider(input.Position.X)
+
+        end
+
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            draggingSlider = false
+
+        end
+
+    end)
+
+    local lowLabel = Instance.new("TextLabel")
+    lowLabel.Parent = varietySection
+    lowLabel.Size = UDim2.new(0,80,0,20)
+    lowLabel.Position = UDim2.new(0,15,1,-25)
+    lowLabel.BackgroundTransparency = 1
+    lowLabel.Text = "subtle"
+    lowLabel.Font = Enum.Font.FredokaOne
+    lowLabel.TextSize = 13
+    lowLabel.TextColor3 = TEXT
+
+    local highLabel = lowLabel:Clone()
+    highLabel.Parent = varietySection
+    highLabel.Position = UDim2.new(1,-95,1,-25)
+    highLabel.Text = "varied"
+
+    --==================================================
+    -- FIND BUTTON
+    --==================================================
+
+    local findSection = createSection(373,92)
+
+    local findButton = Instance.new("TextButton")
+    findButton.Parent = findSection
+    findButton.Size = UDim2.new(1,-30,0,55)
+    findButton.Position = UDim2.new(0,15,0,18)
+    findButton.BackgroundColor3 = BUTTON
+    findButton.BorderSizePixel = 0
+    findButton.Text = ""
+
+    Instance.new("UICorner",findButton).CornerRadius = UDim.new(0,16)
+
+    colourShadowText(
+        findButton,
+        "find colors",
+        23
+    )
+
+    --==================================================
+    -- POPUP
+    --==================================================
+
+    local popup = Instance.new("TextLabel")
+    popup.Parent = frame
+    popup.Size = UDim2.new(1,-50,0,38)
+    popup.Position = UDim2.new(0,25,1,-42)
+    popup.BackgroundColor3 = RAISED
+    popup.BackgroundTransparency = 1
+    popup.TextTransparency = 1
+    popup.Font = Enum.Font.FredokaOne
+    popup.TextSize = 15
+    popup.TextColor3 = TEXT
+    popup.Text = ""
+    popup.ZIndex = 20
+
+    Instance.new("UICorner",popup).CornerRadius = UDim.new(0,12)
+
+    local popupStroke = Instance.new("UIStroke")
+    popupStroke.Color = SHADOW
+    popupStroke.Transparency = 1
+    popupStroke.Parent = popup
+
+    local popupBusy = false
+
+    local function showPopup(text)
+
+        if popupBusy then
+            return
+        end
+
+        popupBusy = true
+
+        popup.Text = text
+        popup.BackgroundTransparency = 0
+        popup.TextTransparency = 0
+        popupStroke.Transparency = 0
+
+        task.delay(1.5,function()
+
+            if popup and popup.Parent then
+
+                for i = 1,10 do
+
+                    popup.BackgroundTransparency = i/10
+                    popup.TextTransparency = i/10
+                    popupStroke.Transparency = i/10
+
+                    task.wait(0.03)
+
+                end
+
+                popup.Text = ""
+
+            end
+
+            popupBusy = false
+
+        end)
+
+    end
+
+    --==================================================
+    -- GENERATE COLOURS
+    --==================================================
+
+    local function findColours()
+
+        if not selectedTone or not selectedColour then
+
+            showPopup(
+                "you need to select a tone and colour!"
+            )
+
+            return
+        end
+
+        local editorRig = workspace:FindFirstChild("EditorRig")
+
+        if not editorRig then
+
+            showPopup(
+                "EditorRig wasn't found!"
+            )
+
+            return
+        end
+
+        local rng = Random.new()
+
+        --==================================================
+        -- BASE BRIGHTNESS
+        --==================================================
+
+        local baseValue
+
+        if selectedTone == "light" then
+
+            -- darker than before so light colours
+            -- don't become neon/washed out
+            baseValue = 0.52
+
+        else
+
+            baseValue = 0.30
+
+        end
+
+        --==================================================
+        -- VARIETY
+        --==================================================
+
+        local valueVariation =
+            0.035 + (colourVariety * 0.16)
+
+        local saturationVariation =
+            0.015 + (colourVariety * 0.045)
+
+        --==================================================
+        -- COLOUR SATURATION
+        --==================================================
+
+        local baseSaturation = 0.28
+
+        -- RED
+        if selectedColour.name == "red" then
+
+            baseSaturation = 0.36
+
+        -- ORANGE
+        elseif selectedColour.name == "orange" then
+
+            baseSaturation = 0.34
+
+        -- YELLOW
+        elseif selectedColour.name == "yellow" then
+
+            -- yellow but not green/neon
+            baseSaturation = 0.30
+
+        -- GREEN
+        elseif selectedColour.name == "green" then
+
+            -- EXTREMELY MUTED
+            -- deliberately low saturation
+            baseSaturation = 0.115
+
+            if selectedTone == "light" then
+
+                -- darker AND duller
+                baseValue = 0.38
+
+            else
+
+                baseValue = 0.27
+
+            end
+
+            valueVariation = 0.025 + (colourVariety * 0.08)
+            saturationVariation = 0.01 + (colourVariety * 0.025)
+
+        -- BLUE
+        elseif selectedColour.name == "blue" then
+
+            -- dark, muted blue
+            baseSaturation = 0.20
+
+            if selectedTone == "light" then
+                baseValue = 0.43
+            else
+                baseValue = 0.28
+            end
+
+        -- PURPLE
+        elseif selectedColour.name == "purple" then
+
+            -- dark pinkish-purple
+            baseSaturation = 0.19
+
+            if selectedTone == "light" then
+
+                -- darker but still visibly purple
+                baseValue = 0.43
+
+            else
+
+                baseValue = 0.30
+
+            end
+
+        end
+
+        local hue = selectedColour.hue
+
+        --==================================================
+        -- APPLY
+        --==================================================
+
+        for _,obj in ipairs(editorRig:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                local value =
+                    baseValue +
+                    rng:NextNumber(
+                        -valueVariation,
+                        valueVariation
+                    )
+
+                local saturation =
+                    baseSaturation +
+                    rng:NextNumber(
+                        -saturationVariation,
+                        saturationVariation
+                    )
+
+                -- Keep everything visible.
+                -- Never allow colours to become black.
+
+                value = math.clamp(
+                    value,
+                    0.22,
+                    0.58
+                )
+
+                saturation = math.clamp(
+                    saturation,
+                    0.07,
+                    0.42
+                )
+
+                -- HUE NEVER CHANGES.
+                -- Therefore:
+                -- red = only red
+                -- orange = only orange
+                -- yellow = only yellow
+                -- green = only green
+                -- blue = only blue
+                -- purple = only purple/pinkish-purple
+
+                obj.Color = Color3.fromHSV(
+                    hue,
+                    saturation,
+                    value
+                )
+
+            end
+
+        end
+
+        showPopup("colors found!")
+
+    end
+
+    --==================================================
+    -- FIND BUTTON EFFECT
+    --==================================================
+
+    findButton.MouseButton1Down:Connect(function()
+
+        findButton.BackgroundColor3 = BUTTON_CLICK
+
+    end)
+
+    findButton.MouseButton1Up:Connect(function()
+
+        findButton.BackgroundColor3 = BUTTON
+
+    end)
+
+    findButton.MouseButton1Click:Connect(findColours)
+
+end
+
+--==================================================
+-- CREATE BUTTON
+--==================================================
+
+createButton(
+    "morphs",
+    "colour finder",
+    function(enabled)
+
+        if enabled then
+
+            openColourFinder()
+
+        else
+
+            destroyColourFinder()
+
+        end
+
+    end
+)
