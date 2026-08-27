@@ -2108,7 +2108,7 @@ local presetLabels = {
 
     {
         role = "Owner",
-        name = "owner"
+        name = "lead developer"
     }
 }
 
