@@ -863,6 +863,56 @@ task.defer(function()
     selectTab(tabs[1], "main")
 end)
 
+-- ==========================================
+-- SPIN
+-- ==========================================
+
+local spinConnection
+
+createButton("main", "spin", function(enabled)
+
+    if enabled then
+
+        local character = workspace:FindFirstChild(player.Name)
+
+        if not character then
+            return
+        end
+
+        local root =
+            character:FindFirstChild("HumanoidRootPart")
+            or character:FindFirstChild("Head")
+
+        if not root then
+            return
+        end
+
+        spinConnection = RunService.RenderStepped:Connect(function()
+
+            if root and root.Parent then
+
+                root.CFrame =
+                    root.CFrame * CFrame.Angles(
+                        0,
+                        math.rad(8),
+                        0
+                    )
+
+            end
+
+        end)
+
+    else
+
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+        end
+
+    end
+
+end)
+
 -- infinite zoom
 local originalMaxZoom = nil
 local originalMinZoom = nil
@@ -2023,6 +2073,1456 @@ createButton("clients", "custom name", function(enabled)
     end
 
 end)
+
+--==================================================
+-- LABELS
+--==================================================
+
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+
+local labelsGui = nil
+local labelsOpen = false
+
+local selectedPreset = nil
+local selectedColour = nil
+
+--==================================================
+-- PRESET LABELS
+--==================================================
+
+local presetLabels = {
+    {
+        role = "GameModerator",
+        name = "game moderator"
+    },
+
+    {
+        role = "Developer",
+        name = "developer"
+    },
+
+    {
+        role = "HeadOfStaff",
+        name = "head of staff"
+    },
+
+    {
+        role = "Owner",
+        name = "owner"
+    }
+}
+
+--==================================================
+-- COLOURS
+--==================================================
+
+local colours = {
+    {name = "red", colour = Color3.fromRGB(210,70,70)},
+    {name = "orange", colour = Color3.fromRGB(225,125,55)},
+    {name = "yellow", colour = Color3.fromRGB(225,200,65)},
+    {name = "green", colour = Color3.fromRGB(75,170,90)},
+    {name = "blue", colour = Color3.fromRGB(75,125,210)},
+    {name = "purple", colour = Color3.fromRGB(145,90,190)},
+    {name = "pink", colour = Color3.fromRGB(215,105,165)},
+    {name = "brown", colour = Color3.fromRGB(145,95,60)},
+    {name = "black", colour = Color3.fromRGB(25,25,25)},
+    {name = "gray", colour = Color3.fromRGB(130,130,130)},
+    {name = "white", colour = Color3.fromRGB(245,245,245)}
+}
+
+--==================================================
+-- TEXT WITH SHADOW
+--==================================================
+
+local function createLabelText(parent, text, size)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = SHADOW
+    shadow.TextXAlignment = Enum.TextXAlignment.Center
+    shadow.TextYAlignment = Enum.TextYAlignment.Center
+    shadow.ZIndex = 2
+
+    local real = Instance.new("TextLabel")
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Size = UDim2.new(1,0,1,0)
+    real.Position = UDim2.new(0,0,0,0)
+    real.BackgroundTransparency = 1
+    real.Text = text
+    real.Font = Enum.Font.FredokaOne
+    real.TextSize = size
+    real.TextColor3 = TEXT
+    real.TextXAlignment = Enum.TextXAlignment.Center
+    real.TextYAlignment = Enum.TextYAlignment.Center
+    real.ZIndex = 3
+
+end
+
+local function clearButtonText(button)
+
+    for _,child in ipairs(button:GetChildren()) do
+
+        if child.Name == "ShadowText"
+        or child.Name == "RealText" then
+
+            child:Destroy()
+
+        end
+
+    end
+
+end
+
+--==================================================
+-- GET CONTENT
+--==================================================
+
+local function getContent()
+
+    local billboards =
+        workspace:WaitForChild("Billboards")
+
+    local userFolder =
+        billboards:WaitForChild(player.Name)
+
+    local content =
+        userFolder:WaitForChild("Content")
+
+    return content
+end
+
+--==================================================
+-- REMOVE LABELS
+--==================================================
+
+local function removeAllLabels()
+
+    local content = getContent()
+
+    local names = {
+        "LocalGameModeratorLabel",
+        "LocalDeveloperLabel",
+        "LocalHeadOfStaffLabel",
+        "LocalOwnerLabel",
+        "LocalCustomLabel"
+    }
+
+    for _,name in ipairs(names) do
+
+        local old =
+            content:FindFirstChild(name)
+
+        if old then
+            old:Destroy()
+        end
+
+    end
+
+end
+
+--==================================================
+-- CREATE PRESET LABEL
+-- THIS USES YOUR EXACT WORKING METHOD
+--==================================================
+
+local function createPresetLabel(roleName)
+
+    local content =
+        getContent()
+
+    local backdrop =
+        content:WaitForChild("Backdrop")
+
+    -- ==========================================
+    -- FIND ROLE
+    -- ==========================================
+
+    local role =
+        ReplicatedFirst:WaitForChild(roleName)
+
+    -- ==========================================
+    -- FIND LABEL
+    -- ==========================================
+
+    local originalLabel =
+        role:WaitForChild("Label")
+
+    if not originalLabel then
+
+        warn(
+            roleName ..
+            " > Label not found!"
+        )
+
+        return false
+
+    end
+
+    if not originalLabel:IsA("TextLabel") then
+
+        warn(
+            roleName ..
+            " Label isn't a TextLabel!"
+        )
+
+        return false
+
+    end
+
+    -- ==========================================
+    -- REMOVE OLD COPY
+    -- ==========================================
+
+    local old =
+        content:FindFirstChild(
+            "Local" ..
+            roleName ..
+            "Label"
+        )
+
+    if old then
+        old:Destroy()
+    end
+
+    -- ==========================================
+    -- COPY LABEL
+    -- ==========================================
+
+    local newLabel =
+        originalLabel:Clone()
+
+    newLabel.Name =
+        "Local" ..
+        roleName ..
+        "Label"
+
+    -- ==========================================
+    -- PUT ABOVE BACKDROP
+    -- EXACTLY LIKE YOUR SCRIPT
+    -- ==========================================
+
+    newLabel.Parent = content
+
+    newLabel.AnchorPoint =
+        Vector2.new(
+            backdrop.AnchorPoint.X,
+            backdrop.AnchorPoint.Y
+        )
+
+    newLabel.Size =
+        backdrop.Size
+
+    newLabel.Position =
+        UDim2.new(
+            backdrop.Position.X.Scale,
+            backdrop.Position.X.Offset,
+            backdrop.Position.Y.Scale,
+            backdrop.Position.Y.Offset
+                - backdrop.AbsoluteSize.Y
+        )
+
+    newLabel.Visible = true
+
+    newLabel.ZIndex =
+        backdrop.ZIndex + 1
+
+    print(
+        roleName ..
+        " label placed above Backdrop!"
+    )
+
+    return true
+
+end
+
+--==================================================
+-- DESTROY GUI
+--==================================================
+
+local function destroyLabelsGui()
+
+    -- ONLY CLOSE THE GUI
+    -- KEEP THE CURRENT LABEL ON THE BILLBOARD
+
+    if labelsGui then
+        labelsGui:Destroy()
+        labelsGui = nil
+    end
+
+    labelsOpen = false
+
+end
+
+--==================================================
+-- OPEN GUI
+--==================================================
+
+local function openLabelsGui()
+
+    if labelsOpen then
+        return
+    end
+
+    labelsOpen = true
+
+    --==================================================
+    -- SCREEN GUI
+    --==================================================
+
+    labelsGui = Instance.new("ScreenGui")
+
+    labelsGui.Name =
+        "LabelsGui"
+
+    labelsGui.ResetOnSpawn =
+        false
+
+    labelsGui.IgnoreGuiInset =
+        true
+
+    labelsGui.DisplayOrder =
+        999998
+
+    labelsGui.Parent =
+        player.PlayerGui
+
+    --==================================================
+    -- MAIN FRAME
+    --==================================================
+
+    local frame =
+        Instance.new("Frame")
+
+    frame.Parent =
+        labelsGui
+
+    frame.Size =
+        UDim2.new(
+            0,
+            500,
+            0,
+            370
+        )
+
+    frame.Position =
+        UDim2.new(
+            0.5,
+            -250,
+            0.5,
+            -185
+        )
+
+    frame.BackgroundColor3 =
+        MAIN
+
+    frame.BorderSizePixel =
+        0
+
+    frame.Active =
+        true
+
+    Instance.new(
+        "UICorner",
+        frame
+    ).CornerRadius =
+        UDim.new(0,22)
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    do
+
+        local dragging = false
+        local dragStart
+        local startPos
+
+        frame.InputBegan:Connect(function(input)
+
+            if input.UserInputType ==
+                Enum.UserInputType.MouseButton1
+            or input.UserInputType ==
+                Enum.UserInputType.Touch then
+
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+
+                input.Changed:Connect(function()
+
+                    if input.UserInputState ==
+                        Enum.UserInputState.End then
+
+                        dragging = false
+
+                    end
+
+                end)
+
+            end
+
+        end)
+
+        UIS.InputChanged:Connect(function(input)
+
+            if not dragging then
+                return
+            end
+
+            if input.UserInputType ==
+                Enum.UserInputType.MouseMovement
+            or input.UserInputType ==
+                Enum.UserInputType.Touch then
+
+                local delta =
+                    input.Position - dragStart
+
+                frame.Position =
+                    UDim2.new(
+                        startPos.X.Scale,
+                        startPos.X.Offset + delta.X,
+                        startPos.Y.Scale,
+                        startPos.Y.Offset + delta.Y
+                    )
+
+            end
+
+        end)
+
+    end
+
+    --==================================================
+    -- TITLE
+    --==================================================
+
+    local title =
+        Instance.new("Frame")
+
+    title.Parent =
+        frame
+
+    title.Size =
+        UDim2.new(
+            0,
+            180,
+            0,
+            45
+        )
+
+    title.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            -4
+        )
+
+    title.BackgroundColor3 =
+        RAISED
+
+    title.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        title
+    ).CornerRadius =
+        UDim.new(0,15)
+
+    createLabelText(
+        title,
+        "labels",
+        24
+    )
+
+    --==================================================
+    -- MINIMISE
+    --==================================================
+
+    local minimizeHolder =
+        Instance.new("Frame")
+
+    minimizeHolder.Parent =
+        frame
+
+    minimizeHolder.Size =
+        UDim2.new(
+            0,
+            40,
+            0,
+            40
+        )
+
+    minimizeHolder.Position =
+        UDim2.new(
+            1,
+            -54,
+            0,
+            -4
+        )
+
+    minimizeHolder.BackgroundColor3 =
+        TAB
+
+    minimizeHolder.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        minimizeHolder
+    ).CornerRadius =
+        UDim.new(0,13)
+
+    local minimizeButton =
+        Instance.new("TextButton")
+
+    minimizeButton.Parent =
+        minimizeHolder
+
+    minimizeButton.Size =
+        UDim2.new(1,0,1,0)
+
+    minimizeButton.BackgroundTransparency =
+        1
+
+    minimizeButton.Text =
+        ""
+
+    createLabelText(
+        minimizeHolder,
+        "-",
+        24
+    )
+
+    local minimized = false
+    local savedSize = frame.Size
+
+    minimizeButton.MouseButton1Click:Connect(function()
+
+        if not minimized then
+
+            savedSize =
+                frame.Size
+
+            minimized = true
+
+            for _,child in ipairs(
+                frame:GetChildren()
+            ) do
+
+                if child ~= title
+                and child ~= minimizeHolder then
+
+                    if child:IsA("GuiObject") then
+                        child.Visible = false
+                    end
+
+                end
+
+            end
+
+            frame.Size =
+                UDim2.new(
+                    0,
+                    500,
+                    0,
+                    55
+                )
+
+        else
+
+            minimized = false
+
+            frame.Size =
+                savedSize
+
+            for _,child in ipairs(
+                frame:GetChildren()
+            ) do
+
+                if child:IsA("GuiObject") then
+                    child.Visible = true
+                end
+
+            end
+
+        end
+
+    end)
+
+    --==================================================
+    -- PRESET SECTION
+    --==================================================
+
+    local presetSection =
+        Instance.new("Frame")
+
+    presetSection.Parent =
+        frame
+
+    presetSection.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            88
+        )
+
+    presetSection.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            52
+        )
+
+    presetSection.BackgroundColor3 =
+        INNER
+
+    presetSection.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        presetSection
+    ).CornerRadius =
+        UDim.new(0,15)
+
+    local presetButtons = {}
+
+    --==================================================
+    -- PRESET BUTTONS
+    --==================================================
+
+    for i,preset in ipairs(presetLabels) do
+
+        local column =
+            (i - 1) % 2
+
+        local row =
+            math.floor((i - 1) / 2)
+
+        local holder =
+            Instance.new("Frame")
+
+        holder.Parent =
+            presetSection
+
+        holder.Size =
+            UDim2.new(
+                0.5,
+                -10,
+                0,
+                32
+            )
+
+        holder.Position =
+            UDim2.new(
+                column * 0.5,
+                7,
+                0,
+                8 + row * 38
+            )
+
+        holder.BackgroundColor3 =
+            BUTTON
+
+        holder.BorderSizePixel =
+            0
+
+        Instance.new(
+            "UICorner",
+            holder
+        ).CornerRadius =
+            UDim.new(0,10)
+
+        local button =
+            Instance.new("TextButton")
+
+        button.Parent =
+            holder
+
+        button.Size =
+            UDim2.new(1,0,1,0)
+
+        button.BackgroundTransparency =
+            1
+
+        button.Text =
+            ""
+
+        createLabelText(
+            holder,
+            preset.name,
+            15
+        )
+
+        presetButtons[preset.role] =
+            holder
+
+        button.MouseButton1Click:Connect(function()
+
+            --==========================================
+            -- DESELECT CURRENT
+            --==========================================
+
+            if selectedPreset ==
+                preset.role then
+
+                selectedPreset = nil
+
+                removeAllLabels()
+
+                clearButtonText(holder)
+
+                holder.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    holder,
+                    preset.name,
+                    15
+                )
+
+                return
+
+            end
+
+            --==========================================
+            -- RESET ALL BUTTONS
+            --==========================================
+
+            for _,otherPreset in ipairs(
+                presetLabels
+            ) do
+
+                local other =
+                    presetButtons[
+                        otherPreset.role
+                    ]
+
+                clearButtonText(other)
+
+                other.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    other,
+                    otherPreset.name,
+                    15
+                )
+
+            end
+
+            --==========================================
+            -- SELECT
+            --==========================================
+
+            selectedPreset =
+                preset.role
+
+            holder.BackgroundColor3 =
+                BUTTON_CLICK
+
+            clearButtonText(holder)
+
+            createLabelText(
+                holder,
+                "✓ " .. preset.name,
+                15
+            )
+
+            --==========================================
+            -- REMOVE OLD LABEL
+            --==========================================
+
+            removeAllLabels()
+
+            --==========================================
+            -- CREATE NEW LABEL
+            --==========================================
+
+            createPresetLabel(
+                preset.role
+            )
+
+        end)
+
+    end
+
+    --==================================================
+    -- CUSTOM LABEL TITLE
+    --==================================================
+
+    local customTitle =
+        Instance.new("TextLabel")
+
+    customTitle.Parent =
+        frame
+
+    customTitle.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            22
+        )
+
+    customTitle.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            148
+        )
+
+    customTitle.BackgroundTransparency =
+        1
+
+    customTitle.Text =
+        "custom label"
+
+    customTitle.Font =
+        Enum.Font.FredokaOne
+
+    customTitle.TextSize =
+        18
+
+    customTitle.TextColor3 =
+        TEXT
+
+    customTitle.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    local textBoxHolder =
+        Instance.new("Frame")
+
+    textBoxHolder.Parent =
+        frame
+
+    textBoxHolder.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            35
+        )
+
+    textBoxHolder.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            173
+        )
+
+    textBoxHolder.BackgroundColor3 =
+        INNER
+
+    textBoxHolder.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        textBoxHolder
+    ).CornerRadius =
+        UDim.new(0,11)
+
+    local textBox =
+        Instance.new("TextBox")
+
+    textBox.Parent =
+        textBoxHolder
+
+    textBox.Size =
+        UDim2.new(
+            1,
+            -16,
+            1,
+            0
+        )
+
+    textBox.Position =
+        UDim2.new(
+            0,
+            8,
+            0,
+            0
+        )
+
+    textBox.BackgroundTransparency =
+        1
+
+    textBox.ClearTextOnFocus =
+        false
+
+    textBox.MultiLine =
+        false
+
+    textBox.TextWrapped =
+        false
+
+    textBox.Font =
+        Enum.Font.FredokaOne
+
+    textBox.TextSize =
+        16
+
+    textBox.TextColor3 =
+        TEXT
+
+    textBox.PlaceholderText =
+        "type your custom label..."
+
+    textBox.PlaceholderColor3 =
+        RAISED
+
+    textBox.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    textBox.TextYAlignment =
+        Enum.TextYAlignment.Center
+
+    --==================================================
+    -- APPLY BUTTON
+    --==================================================
+
+    local applyButton =
+        Instance.new("TextButton")
+
+    applyButton.Parent =
+        frame
+
+    applyButton.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            35
+        )
+
+    applyButton.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            215
+        )
+
+    applyButton.BackgroundColor3 =
+        BUTTON
+
+    applyButton.BorderSizePixel =
+        0
+
+    applyButton.Text =
+        ""
+
+    Instance.new(
+        "UICorner",
+        applyButton
+    ).CornerRadius =
+        UDim.new(0,11)
+
+    createLabelText(
+        applyButton,
+        "apply custom label",
+        17
+    )
+
+    --==================================================
+    -- COLOUR TITLE
+    --==================================================
+
+    local colourTitle =
+        Instance.new("TextLabel")
+
+    colourTitle.Parent =
+        frame
+
+    colourTitle.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            20
+        )
+
+    colourTitle.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            258
+        )
+
+    colourTitle.BackgroundTransparency =
+        1
+
+    colourTitle.Text =
+        "text colour"
+
+    colourTitle.Font =
+        Enum.Font.FredokaOne
+
+    colourTitle.TextSize =
+        15
+
+    colourTitle.TextColor3 =
+        TEXT
+
+    colourTitle.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    --==================================================
+    -- COLOUR SCROLL
+    --==================================================
+
+    local colourScroll =
+        Instance.new("ScrollingFrame")
+
+    colourScroll.Parent =
+        frame
+
+    colourScroll.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            38
+        )
+
+    colourScroll.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            282
+        )
+
+    colourScroll.BackgroundTransparency =
+        1
+
+    colourScroll.BorderSizePixel =
+        0
+
+    colourScroll.ScrollBarThickness =
+        4
+
+    colourScroll.ScrollingDirection =
+        Enum.ScrollingDirection.X
+
+    local colourLayout =
+        Instance.new("UIListLayout")
+
+    colourLayout.Parent =
+        colourScroll
+
+    colourLayout.FillDirection =
+        Enum.FillDirection.Horizontal
+
+    colourLayout.Padding =
+        UDim.new(0,5)
+
+    colourLayout.VerticalAlignment =
+        Enum.VerticalAlignment.Center
+
+    local colourButtons = {}
+
+    for _,option in ipairs(colours) do
+
+        local holder =
+            Instance.new("Frame")
+
+        holder.Parent =
+            colourScroll
+
+        holder.Size =
+            UDim2.new(
+                0,
+                67,
+                0,
+                31
+            )
+
+        holder.BackgroundColor3 =
+            BUTTON
+
+        holder.BorderSizePixel =
+            0
+
+        Instance.new(
+            "UICorner",
+            holder
+        ).CornerRadius =
+            UDim.new(0,9)
+
+        local button =
+            Instance.new("TextButton")
+
+        button.Parent =
+            holder
+
+        button.Size =
+            UDim2.new(1,0,1,0)
+
+        button.BackgroundTransparency =
+            1
+
+        button.Text =
+            ""
+
+        createLabelText(
+            holder,
+            option.name,
+            11
+        )
+
+        colourButtons[option.name] =
+            holder
+
+        button.MouseButton1Click:Connect(function()
+
+            if selectedColour
+            and selectedColour.name ==
+                option.name then
+
+                selectedColour = nil
+
+            else
+
+                selectedColour = option
+
+            end
+
+            for name,other in pairs(
+                colourButtons
+            ) do
+
+                clearButtonText(other)
+
+                other.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    other,
+                    name,
+                    11
+                )
+
+            end
+
+            if selectedColour then
+
+                local selected =
+                    colourButtons[
+                        selectedColour.name
+                    ]
+
+                selected.BackgroundColor3 =
+                    BUTTON_CLICK
+
+                clearButtonText(selected)
+
+                createLabelText(
+                    selected,
+                    "✓ " ..
+                    selectedColour.name,
+                    11
+                )
+
+            end
+
+        end)
+
+    end
+
+    task.defer(function()
+
+        colourScroll.CanvasSize =
+            UDim2.new(
+                0,
+                colourLayout.AbsoluteContentSize.X + 10,
+                0,
+                0
+            )
+
+    end)
+
+    --==================================================
+    -- POPUP
+    --==================================================
+
+    local popup =
+        Instance.new("TextLabel")
+
+    popup.Parent =
+        frame
+
+    popup.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            32
+        )
+
+    popup.Position =
+        UDim2.new(
+            0,
+            14,
+            1,
+            -40
+        )
+
+    popup.BackgroundColor3 =
+        RAISED
+
+    popup.BackgroundTransparency =
+        1
+
+    popup.TextTransparency =
+        1
+
+    popup.Text =
+        ""
+
+    popup.Font =
+        Enum.Font.FredokaOne
+
+    popup.TextSize =
+        13
+
+    popup.TextColor3 =
+        TEXT
+
+    popup.ZIndex =
+        50
+
+    Instance.new(
+        "UICorner",
+        popup
+    ).CornerRadius =
+        UDim.new(0,10)
+
+    local popupNumber = 0
+
+    local function showPopup(message)
+
+        popupNumber += 1
+
+        local thisPopup =
+            popupNumber
+
+        popup.Text =
+            message
+
+        popup.BackgroundTransparency =
+            0
+
+        popup.TextTransparency =
+            0
+
+        task.delay(2.5,function()
+
+            if thisPopup ~= popupNumber then
+                return
+            end
+
+            if not popup.Parent then
+                return
+            end
+
+            for i = 1,10 do
+
+                popup.BackgroundTransparency =
+                    i / 10
+
+                popup.TextTransparency =
+                    i / 10
+
+                task.wait(0.04)
+
+            end
+
+            popup.Text = ""
+
+        end)
+
+    end
+
+    --==================================================
+    -- APPLY CUSTOM LABEL
+    --==================================================
+
+    applyButton.MouseButton1Click:Connect(function()
+
+        local typedText =
+            textBox.Text
+
+        if typedText:gsub("%s","") == ""
+        or not selectedColour then
+
+            showPopup(
+                "select a colour and label to apply custom label!"
+            )
+
+            return
+
+        end
+
+        --==============================================
+        -- GET BILLBOARD
+        --==============================================
+
+        local content =
+            getContent()
+
+        local backdrop =
+            content:WaitForChild("Backdrop")
+
+        --==============================================
+        -- REMOVE PRESET
+        --==============================================
+
+        removeAllLabels()
+
+        selectedPreset = nil
+
+        for _,preset in ipairs(
+            presetLabels
+        ) do
+
+            local holder =
+                presetButtons[
+                    preset.role
+                ]
+
+            clearButtonText(holder)
+
+            holder.BackgroundColor3 =
+                BUTTON
+
+            createLabelText(
+                holder,
+                preset.name,
+                15
+            )
+
+        end
+
+        --==============================================
+        -- USE DEVELOPER LABEL AS TEMPLATE
+        --==============================================
+
+        local developer =
+            ReplicatedFirst:WaitForChild(
+                "Developer"
+            )
+
+        local originalLabel =
+            developer:WaitForChild(
+                "Label"
+            )
+
+        if not originalLabel:IsA("TextLabel") then
+
+            warn(
+                "Developer Label isn't a TextLabel!"
+            )
+
+            return
+
+        end
+
+        --==============================================
+        -- COPY
+        --==============================================
+
+        local newLabel =
+            originalLabel:Clone()
+
+        newLabel.Name =
+            "LocalCustomLabel"
+
+        newLabel.Text =
+            typedText
+
+        newLabel.TextColor3 =
+            selectedColour.colour
+
+        --==============================================
+        -- EXACT SAME POSITIONING
+        --==============================================
+
+        newLabel.Parent =
+            content
+
+        newLabel.AnchorPoint =
+            Vector2.new(
+                backdrop.AnchorPoint.X,
+                backdrop.AnchorPoint.Y
+            )
+
+        newLabel.Size =
+            backdrop.Size
+
+        newLabel.Position =
+            UDim2.new(
+                backdrop.Position.X.Scale,
+                backdrop.Position.X.Offset,
+                backdrop.Position.Y.Scale,
+                backdrop.Position.Y.Offset
+                    - backdrop.AbsoluteSize.Y
+            )
+
+        newLabel.Visible =
+            true
+
+        newLabel.ZIndex =
+            backdrop.ZIndex + 1
+
+        print(
+            "Custom label placed above Backdrop!"
+        )
+
+    end)
+
+end
+
+--==================================================
+-- BUTTON
+--==================================================
+
+createButton(
+    "clients",
+    "labels",
+    function(enabled)
+
+        if enabled then
+
+            openLabelsGui()
+
+        else
+
+            destroyLabelsGui()
+
+        end
+
+    end
+)
 
 createButton("clients", "spawn npc", function(enabled)
 
