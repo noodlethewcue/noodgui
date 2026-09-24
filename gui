@@ -1,1 +1,5328 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
 
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ==========================================
+-- REMOVE PREVIOUS EXECUTION
+-- ==========================================
+
+for _, gui in ipairs(playerGui:GetChildren()) do
+    if gui.Name == "noodgui" or gui.Name == "nightguiKeySystem" then
+        gui:Destroy()
+    end
+end
+
+-- Reset key state for this execution
+_G.NightGUIKeyAccepted = false
+
+-- CLEAN UP OLD GUI INSTANCES
+local playerGui = player:WaitForChild("PlayerGui")
+
+for _, gui in ipairs(playerGui:GetChildren()) do
+    if gui.Name == "noodgui" or gui.Name == "nightguiKeySystem" then
+        gui:Destroy()
+    end
+end
+
+-- Reset key state for this execution
+_G.NightGUIKeyAccepted = false
+
+-- ==========================================
+-- KEY SYSTEM
+-- ==========================================
+
+local CORRECT_KEY = "mommyasmr"
+
+-- Remove an old key window if one exists
+local playerGui = player:WaitForChild("PlayerGui")
+
+local oldKeyGui = playerGui:FindFirstChild("nightguiKeySystem")
+if oldKeyGui then
+    oldKeyGui:Destroy()
+end
+
+-- Key GUI
+local keyGui = Instance.new("ScreenGui")
+keyGui.Name = "nightguiKeySystem"
+keyGui.ResetOnSpawn = false
+keyGui.IgnoreGuiInset = true
+keyGui.DisplayOrder = 999999
+keyGui.Parent = playerGui
+
+-- ==========================================
+-- KEY WINDOW
+-- ==========================================
+
+local keyFrame = Instance.new("Frame")
+keyFrame.Name = "KeyFrame"
+keyFrame.Size = UDim2.new(0,550,0,340)
+keyFrame.Position = UDim2.new(0.5,-275,0.5,-170)
+keyFrame.BackgroundColor3 = Color3.fromRGB(102,66,99)
+keyFrame.BorderSizePixel = 0
+keyFrame.Active = true
+keyFrame.Parent = keyGui
+
+Instance.new("UICorner",keyFrame).CornerRadius = UDim.new(0,25)
+
+-- ==========================================
+-- DRAGGING
+-- ==========================================
+
+do
+    local dragging = false
+    local dragStart
+    local startPos
+
+    keyFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPos = keyFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if not dragging then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+            local delta = input.Position - dragStart
+
+            keyFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ==========================================
+-- TEXT SHADOW
+-- ==========================================
+
+local function keyShadowText(parent,text,size)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = Color3.fromRGB(80,40,60)
+    shadow.TextXAlignment = Enum.TextXAlignment.Center
+
+    local real = shadow:Clone()
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Position = UDim2.new(0,0,0,0)
+    real.TextColor3 = Color3.fromRGB(255,255,255)
+
+    return real
+end
+
+-- ==========================================
+-- TITLE
+-- ==========================================
+
+local titleHolder = Instance.new("Frame")
+titleHolder.Parent = keyFrame
+titleHolder.Size = UDim2.new(0,260,0,50)
+titleHolder.Position = UDim2.new(0,15,0,-5)
+titleHolder.BackgroundColor3 = Color3.fromRGB(122,82,118)
+titleHolder.BorderSizePixel = 0
+
+Instance.new("UICorner",titleHolder).CornerRadius = UDim.new(0,18)
+
+keyShadowText(
+    titleHolder,
+    "noodgui key system",
+    25
+)
+
+-- ==========================================
+-- TOP BUTTONS
+-- ==========================================
+
+local function createKeyTopButton(symbol,offset)
+
+    local holder = Instance.new("Frame")
+    holder.Parent = keyFrame
+    holder.Size = UDim2.new(0,45,0,45)
+    holder.Position = UDim2.new(1,offset,0,-5)
+    holder.BackgroundColor3 = Color3.fromRGB(142,98,138)
+    holder.BorderSizePixel = 0
+
+    Instance.new("UICorner",holder).CornerRadius = UDim.new(0,14)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    keyShadowText(holder,symbol,27)
+
+    btn.MouseButton1Down:Connect(function()
+        holder.BackgroundColor3 = Color3.fromRGB(192,132,180)
+    end)
+
+    btn.MouseButton1Up:Connect(function()
+        holder.BackgroundColor3 = Color3.fromRGB(142,98,138)
+    end)
+
+    return btn,holder
+end
+
+local keyMinimize = createKeyTopButton("-", -100)
+local keyClose = createKeyTopButton("X", -50)
+
+-- ==========================================
+-- MINIMIZE
+-- ==========================================
+
+local keyMinimized = false
+local keySavedSize = keyFrame.Size
+
+keyMinimize.MouseButton1Click:Connect(function()
+
+    if not keyMinimized then
+
+        keySavedSize = keyFrame.Size
+        keyMinimized = true
+
+        for _,child in ipairs(keyFrame:GetChildren()) do
+            if child ~= titleHolder
+            and child ~= keyMinimize.Parent
+            and child ~= keyClose.Parent then
+
+                if child:IsA("GuiObject") then
+                    child.Visible = false
+                end
+            end
+        end
+
+        keyFrame.Size = UDim2.new(0,550,0,60)
+
+    else
+
+        keyMinimized = false
+        keyFrame.Size = keySavedSize
+
+        for _,child in ipairs(keyFrame:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child.Visible = true
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- CLOSE
+-- ==========================================
+
+keyClose.MouseButton1Click:Connect(function()
+    keyGui:Destroy()
+end)
+
+-- ==========================================
+-- INFO
+-- ==========================================
+
+local info = Instance.new("TextLabel")
+info.Parent = keyFrame
+info.Size = UDim2.new(1,-40,0,35)
+info.Position = UDim2.new(0,20,0,65)
+info.BackgroundTransparency = 1
+info.Text = "enter your key to continue"
+info.Font = Enum.Font.FredokaOne
+info.TextSize = 18
+info.TextColor3 = Color3.fromRGB(255,255,255)
+info.TextXAlignment = Enum.TextXAlignment.Center
+
+local infoStroke = Instance.new("UIStroke")
+infoStroke.Color = Color3.fromRGB(80,40,60)
+infoStroke.Thickness = 1.5
+infoStroke.Parent = info
+
+-- ==========================================
+-- KEY BOX
+-- ==========================================
+
+local keyBox = Instance.new("TextBox")
+keyBox.Parent = keyFrame
+keyBox.Size = UDim2.new(1,-70,0,48)
+keyBox.Position = UDim2.new(0,35,0,110)
+keyBox.BackgroundColor3 = Color3.fromRGB(75,48,73)
+keyBox.BorderSizePixel = 0
+keyBox.PlaceholderText = "enter key..."
+keyBox.PlaceholderColor3 = Color3.fromRGB(180,165,180)
+keyBox.Text = ""
+keyBox.TextColor3 = Color3.fromRGB(255,255,255)
+keyBox.TextSize = 18
+keyBox.Font = Enum.Font.FredokaOne
+keyBox.ClearTextOnFocus = false
+
+Instance.new("UICorner",keyBox).CornerRadius = UDim.new(0,14)
+
+local keyBoxStroke = Instance.new("UIStroke")
+keyBoxStroke.Color = Color3.fromRGB(152,92,140)
+keyBoxStroke.Thickness = 2
+keyBoxStroke.Parent = keyBox
+
+-- ==========================================
+-- ENTER BUTTON
+-- ==========================================
+
+local enterButton = Instance.new("TextButton")
+enterButton.Parent = keyFrame
+enterButton.Size = UDim2.new(0,145,0,45)
+enterButton.Position = UDim2.new(0.5,-72,0,170)
+enterButton.BackgroundColor3 = Color3.fromRGB(172,112,160)
+enterButton.BorderSizePixel = 0
+enterButton.Text = ""
+
+Instance.new("UICorner",enterButton).CornerRadius = UDim.new(0,14)
+
+keyShadowText(
+    enterButton,
+    "Enter",
+    20
+)
+
+-- ==========================================
+-- DISCORD
+-- ==========================================
+
+local discord = Instance.new("TextLabel")
+discord.Parent = keyFrame
+discord.Size = UDim2.new(0,350,0,45)
+discord.Position = UDim2.new(0,25,0,235)
+discord.BackgroundTransparency = 1
+discord.Text = "join https://discord.gg/57m32kQGJ for key"
+discord.TextColor3 = Color3.fromRGB(255,255,255)
+discord.TextSize = 14
+discord.Font = Enum.Font.FredokaOne
+discord.TextXAlignment = Enum.TextXAlignment.Left
+discord.TextWrapped = true
+
+local discordStroke = Instance.new("UIStroke")
+discordStroke.Color = Color3.fromRGB(80,40,60)
+discordStroke.Thickness = 1
+discordStroke.Parent = discord
+
+-- ==========================================
+-- COPY BUTTON
+-- ==========================================
+
+local copyButton = Instance.new("TextButton")
+copyButton.Parent = keyFrame
+copyButton.Size = UDim2.new(0,110,0,40)
+copyButton.Position = UDim2.new(1,-135,0,237)
+copyButton.BackgroundColor3 = Color3.fromRGB(172,112,160)
+copyButton.BorderSizePixel = 0
+copyButton.Text = ""
+
+Instance.new("UICorner",copyButton).CornerRadius = UDim.new(0,13)
+
+keyShadowText(copyButton,"Copy",18)
+
+copyButton.MouseButton1Click:Connect(function()
+
+    if setclipboard then
+        setclipboard("https://discord.gg/57m32kQGJ")
+    end
+
+    for _,child in ipairs(copyButton:GetChildren()) do
+        if child.Name == "ShadowText"
+        or child.Name == "RealText" then
+            child:Destroy()
+        end
+    end
+
+    keyShadowText(copyButton,"Copied!",18)
+
+    task.delay(1.5,function()
+
+        if copyButton and copyButton.Parent then
+
+            for _,child in ipairs(copyButton:GetChildren()) do
+                if child.Name == "ShadowText"
+                or child.Name == "RealText" then
+                    child:Destroy()
+                end
+            end
+
+            keyShadowText(copyButton,"Copy",18)
+        end
+    end)
+end)
+
+-- ==========================================
+-- RESULT
+-- ==========================================
+
+local result = Instance.new("TextLabel")
+result.Parent = keyFrame
+result.Size = UDim2.new(1,-30,0,25)
+result.Position = UDim2.new(0,15,0,295)
+result.BackgroundTransparency = 1
+result.Text = ""
+result.TextSize = 14
+result.Font = Enum.Font.FredokaOne
+result.TextXAlignment = Enum.TextXAlignment.Center
+
+-- ==========================================
+-- CHECK KEY
+-- ==========================================
+
+local function checkKey()
+
+    if keyBox.Text:lower() == CORRECT_KEY then
+
+        result.Text = "Key accepted!"
+        result.TextColor3 = Color3.fromRGB(170,255,180)
+
+        task.wait(0.4)
+
+        -- This is the important part from your
+        -- older working key system.
+        _G.NightGUIKeyAccepted = true
+
+        keyGui:Destroy()
+
+    else
+
+        result.Text = "Incorrect key!"
+        result.TextColor3 = Color3.fromRGB(255,150,150)
+
+        keyBox.Text = ""
+    end
+end
+
+enterButton.MouseButton1Click:Connect(checkKey)
+
+keyBox.FocusLost:Connect(function(enterPressed)
+
+    if enterPressed then
+        checkKey()
+    end
+
+end)
+
+-- ==========================================
+-- MAIN GUI WAITS FOR KEY
+-- ==========================================
+
+repeat
+    task.wait()
+until _G.NightGUIKeyAccepted
+
+-- gui colours ref 664263
+
+local MAIN         = Color3.fromRGB(102, 66, 99)   -- #664263 base
+local RAISED       = Color3.fromRGB(122, 82, 118)  -- lighter raised elements
+local TAB          = Color3.fromRGB(142, 98, 138)  -- light tabs
+local TAB_SELECTED = Color3.fromRGB(162, 118, 158) -- selected tab highlight
+local INNER        = Color3.fromRGB(152, 92, 140)  -- inner frame slightly lighter than main
+local BUTTON       = Color3.fromRGB(172, 112, 160) -- default button
+local BUTTON_CLICK = Color3.fromRGB(192, 132, 180) -- clicked button
+local TEXT         = Color3.fromRGB(255, 255, 255) -- keep text white
+local SHADOW       = Color3.fromRGB(80, 40, 60)    -- shadow text slightly darker
+
+-- main gui
+local gui = Instance.new("ScreenGui")
+gui.Parent = player.PlayerGui
+gui.ResetOnSpawn = false
+
+repeat
+	task.wait()
+until _G.NightGUIKeyAccepted
+
+local main = Instance.new("Frame")
+main.Parent = gui
+main.Size = UDim2.new(0,550,0,340)
+main.Position = UDim2.new(0.5,-275,0.5,-170)
+main.BackgroundColor3 = MAIN
+main.BorderSizePixel = 0
+main.Active = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0,25)
+
+-- dragging
+do
+    local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+    main.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+            dragInput = input
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    main.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- text shadows
+local function createShadowText(parent, text, size)
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = SHADOW
+
+    local real = shadow:Clone()
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Position = UDim2.new(0,0,0,0)
+    real.TextColor3 = TEXT
+
+    return real
+end
+
+-- title
+local titleHolder = Instance.new("Frame")
+titleHolder.Parent = main
+titleHolder.Size = UDim2.new(0,200,0,50)
+titleHolder.Position = UDim2.new(0,15,-0.05,0)
+titleHolder.BackgroundColor3 = RAISED
+titleHolder.BorderSizePixel = 0
+Instance.new("UICorner", titleHolder).CornerRadius = UDim.new(0,18)
+createShadowText(titleHolder,"noodgui",30)
+
+-- top buttons
+local function createTopButton(symbol,offset)
+    local holder = Instance.new("Frame")
+    holder.Parent = main
+    holder.Size = UDim2.new(0,45,0,45)
+    holder.Position = UDim2.new(1,offset,-0.05,0)
+    holder.BackgroundColor3 = TAB
+    holder.BorderSizePixel = 0
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0,14)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    createShadowText(holder,symbol,28)
+
+    btn.MouseButton1Down:Connect(function() holder.BackgroundColor3 = BUTTON_CLICK end)
+    btn.MouseButton1Up:Connect(function() holder.BackgroundColor3 = TAB end)
+    return btn, holder
+end
+
+local minimize, _ = createTopButton("-", -100)
+local close, _ = createTopButton("X", -50)
+
+close.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+-- tabs
+local tabsHolder = Instance.new("ScrollingFrame")
+tabsHolder.Parent = main
+tabsHolder.Position = UDim2.new(0,15,0,60)
+tabsHolder.Size = UDim2.new(1,-30,0,50)
+tabsHolder.BackgroundTransparency = 1
+tabsHolder.BorderSizePixel = 0
+tabsHolder.ScrollBarThickness = 6
+tabsHolder.HorizontalScrollBarInset = Enum.ScrollBarInset.Always
+tabsHolder.CanvasSize = UDim2.new(0,0,0,0)
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = tabsHolder
+layout.FillDirection = Enum.FillDirection.Horizontal
+layout.Padding = UDim.new(0,8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Parent = main
+scroll.Position = UDim2.new(0,15,0,115)
+scroll.Size = UDim2.new(1,-30,1,-130)
+scroll.BackgroundColor3 = INNER
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 6
+scroll.CanvasSize = UDim2.new(0,0,0,1200)
+Instance.new("UICorner", scroll).CornerRadius = UDim.new(0,18)
+
+local grid = Instance.new("UIGridLayout")
+grid.Parent = scroll
+grid.CellSize = UDim2.new(0,240,0,70)
+grid.CellPadding = UDim2.new(0,12,0,12)
+
+-- GUI SIZE SYSTEM
+local guiSizes = {
+    small = UDim2.new(0,400,0,260),
+    medium = UDim2.new(0,475,0,300),
+    large = UDim2.new(0,550,0,340)
+}
+
+local currentGuiSize = "large"
+local minimized = false
+
+local function updateGuiSize(sizeName)
+    if minimized then return end
+
+    currentGuiSize = sizeName
+    main.Size = guiSizes[sizeName]
+
+    -- Keep the buttons fitting nicely inside the GUI
+    local width = guiSizes[sizeName].X.Offset
+
+    if sizeName == "small" then
+        grid.CellSize = UDim2.new(0,170,0,60)
+        grid.CellPadding = UDim2.new(0,8,0,8)
+    elseif sizeName == "medium" then
+        grid.CellSize = UDim2.new(0,205,0,65)
+        grid.CellPadding = UDim2.new(0,10,0,10)
+    else
+        grid.CellSize = UDim2.new(0,240,0,70)
+        grid.CellPadding = UDim2.new(0,12,0,12)
+    end
+end
+
+-- MINIMIZE SYSTEM
+local minimized = false
+local savedGuiSize = main.Size
+
+minimize.MouseButton1Click:Connect(function()
+    if not minimized then
+        -- Save whatever size the GUI is currently
+        savedGuiSize = main.Size
+        minimized = true
+
+        tabsHolder.Visible = false
+        scroll.Visible = false
+
+        -- Keep the current width, only make it short
+        main.Size = UDim2.new(
+            savedGuiSize.X.Scale,
+            savedGuiSize.X.Offset,
+            0,
+            60
+        )
+
+    else
+        minimized = false
+
+        tabsHolder.Visible = true
+        scroll.Visible = true
+
+        -- Restore the exact size it had before minimizing
+        main.Size = savedGuiSize
+    end
+end)
+
+-- button system
+local buttonStates = {}
+local spamRunning, spamTracks = false, {}
+local cloneRunning = false
+local cloneThread = nil
+local tabButtons = {}
+
+local function createButton(tabName, btnName, callback)
+    tabButtons[tabName] = tabButtons[tabName] or {}
+
+    local holder = Instance.new("Frame")
+    holder.Parent = scroll
+    holder.BackgroundColor3 = BUTTON
+    holder.BorderSizePixel = 0
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0,16)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    local labelText = "enable "..btnName
+    local label = createShadowText(holder,labelText,24)
+    buttonStates[btnName] = false
+
+    btn.MouseButton1Down:Connect(function() holder.BackgroundColor3 = BUTTON_CLICK end)
+    btn.MouseButton1Up:Connect(function() holder.BackgroundColor3 = BUTTON end)
+
+    btn.MouseButton1Click:Connect(function()
+        buttonStates[btnName] = not buttonStates[btnName]
+        local enabled = buttonStates[btnName]
+
+        for _, child in pairs(holder:GetChildren()) do
+            if child.Name == "ShadowText" or child.Name == "RealText" then child:Destroy() end
+        end
+
+        local labelText = (enabled and "disable " or "enable ") .. btnName
+        label = createShadowText(holder,labelText,24)
+
+        callback(enabled)
+    end)
+
+holder.Visible = true
+holder.Parent = scroll
+    table.insert(tabButtons[tabName], holder)
+end
+
+-- SETTINGS: GUI SIZE BUTTONS
+local guiSizeButtons = {}
+local currentGuiSize = "large gui"
+
+local guiSizes = {
+    ["small gui"] = UDim2.new(0,400,0,250),
+    ["medium gui"] = UDim2.new(0,475,0,295),
+    ["large gui"] = UDim2.new(0,550,0,340)
+}
+
+local function updateAllButtonSizes()
+    local width = main.AbsoluteSize.X
+
+    if width <= 420 then
+        grid.CellSize = UDim2.new(0.5,-4,0,50)
+        grid.CellPadding = UDim2.new(0,8,0,8)
+
+    elseif width <= 500 then
+        grid.CellSize = UDim2.new(0.5,-5,0,60)
+        grid.CellPadding = UDim2.new(0,10,0,10)
+
+    else
+        grid.CellSize = UDim2.new(0.5,-6,0,70)
+        grid.CellPadding = UDim2.new(0,12,0,12)
+    end
+end
+
+local function createGuiSizeButton(btnName)
+    tabButtons["settings"] = tabButtons["settings"] or {}
+
+    local holder = Instance.new("Frame")
+    holder.Parent = scroll
+    holder.Name = "Settings_" .. btnName
+    holder.BackgroundColor3 =
+        (btnName == "large gui") and BUTTON_CLICK or BUTTON
+    holder.BorderSizePixel = 0
+
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0,16)
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = holder
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+
+    createShadowText(holder, btnName, 24)
+
+    btn.MouseButton1Down:Connect(function()
+        holder.BackgroundColor3 = BUTTON_CLICK
+    end)
+
+    btn.MouseButton1Up:Connect(function()
+        if currentGuiSize == btnName then
+            holder.BackgroundColor3 = BUTTON_CLICK
+        else
+            holder.BackgroundColor3 = BUTTON
+        end
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        currentGuiSize = btnName
+
+        -- Change the GUI size
+        main.Size = guiSizes[btnName]
+
+        -- Resize ALL buttons so they fit inside the category
+        updateAllButtonSizes()
+
+        -- Highlight selected size
+        for name, buttonHolder in pairs(guiSizeButtons) do
+            if name == currentGuiSize then
+                buttonHolder.BackgroundColor3 = BUTTON_CLICK
+            else
+                buttonHolder.BackgroundColor3 = BUTTON
+            end
+        end
+    end)
+
+    holder.Visible = false
+
+    -- THIS puts the buttons inside Settings
+    table.insert(tabButtons["settings"], holder)
+
+    guiSizeButtons[btnName] = holder
+end
+
+createGuiSizeButton("small gui")
+createGuiSizeButton("medium gui")
+createGuiSizeButton("large gui")
+
+-- tab system
+local tabs = {}
+local selected = nil
+
+local function selectTab(tab, name)
+    if selected then
+        selected.BackgroundColor3 = TAB
+    end
+
+    selected = tab
+    tab.BackgroundColor3 = TAB_SELECTED
+
+    -- hide all buttons
+    for _, buttons in pairs(tabButtons) do
+        for _, btn in ipairs(buttons) do
+            btn.Visible = false
+        end
+    end
+
+    -- show buttons for selected tab
+    if tabButtons[name] then
+        for _, btn in ipairs(tabButtons[name]) do
+            btn.Visible = true
+        end
+    end
+end
+
+-- tab names
+local names = {"main","clients","settings"}
+
+for _, name in ipairs(names) do
+    local tab = Instance.new("TextButton")
+    tab.Parent = tabsHolder
+    tab.Size = UDim2.new(0,130,1,0)
+    tab.BackgroundColor3 = TAB
+    tab.BorderSizePixel = 0
+    tab.Text = ""
+    Instance.new("UICorner", tab).CornerRadius = UDim.new(0,16)
+
+    createShadowText(tab, name, 22)
+
+    tab.MouseButton1Click:Connect(function()
+        selectTab(tab, name)
+    end)
+
+    table.insert(tabs, tab)
+end
+
+tabsHolder.CanvasSize = UDim2.new(0, #names*(130+8), 0, 0)
+
+-- default selected tab
+
+task.defer(function()
+    selectTab(tabs[1], "main")
+end)
+
+-- ==========================================
+-- SPIN
+-- ==========================================
+
+local spinConnection
+
+createButton("main", "spin", function(enabled)
+
+    if enabled then
+
+        local character = workspace:FindFirstChild(player.Name)
+
+        if not character then
+            return
+        end
+
+        local root =
+            character:FindFirstChild("HumanoidRootPart")
+            or character:FindFirstChild("Head")
+
+        if not root then
+            return
+        end
+
+        spinConnection = RunService.RenderStepped:Connect(function()
+
+            if root and root.Parent then
+
+                root.CFrame =
+                    root.CFrame * CFrame.Angles(
+                        0,
+                        math.rad(8),
+                        0
+                    )
+
+            end
+
+        end)
+
+    else
+
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+        end
+
+    end
+
+end)
+
+-- infinite zoom
+local originalMaxZoom = nil
+local originalMinZoom = nil
+
+createButton("main","infinite zoom",function(enabled)
+
+    local player = game.Players.LocalPlayer
+
+    if enabled then
+        if not originalMaxZoom then
+            originalMaxZoom = player.CameraMaxZoomDistance
+            originalMinZoom = player.CameraMinZoomDistance
+        end
+
+        player.CameraMaxZoomDistance = 1000000
+        player.CameraMinZoomDistance = 0.5
+
+    else
+        if originalMaxZoom then
+            player.CameraMaxZoomDistance = originalMaxZoom
+            player.CameraMinZoomDistance = originalMinZoom
+        end
+    end
+
+end)
+
+-- speed 100
+local speedConnection = nil
+local SPEED_VALUE = 100
+
+createButton("main","speedy ass",function(enabled)
+
+    local function applySpeed(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.WalkSpeed = SPEED_VALUE
+
+        if speedConnection then
+            speedConnection:Disconnect()
+        end
+
+        speedConnection = RunService.Heartbeat:Connect(function()
+            if humanoid.Parent and humanoid.WalkSpeed ~= SPEED_VALUE then
+                humanoid.WalkSpeed = SPEED_VALUE
+            end
+        end)
+    end
+
+    if enabled then
+        local character = player.Character or player.CharacterAdded:Wait()
+        applySpeed(character)
+
+        buttonStates.speedRespawn = player.CharacterAdded:Connect(function(character)
+            applySpeed(character)
+        end)
+    else
+        if speedConnection then
+            speedConnection:Disconnect()
+            speedConnection = nil
+        end
+
+        if buttonStates.speedRespawn then
+            buttonStates.speedRespawn:Disconnect()
+            buttonStates.speedRespawn = nil
+        end
+
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+    end
+
+end)
+
+-- speedier
+local speedierConnection = nil
+local SPEEDIER_VALUE = 700
+
+createButton("main","speedier",function(enabled)
+
+    local function applySpeed(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.WalkSpeed = SPEEDIER_VALUE
+
+        if speedierConnection then
+            speedierConnection:Disconnect()
+        end
+
+        speedierConnection = RunService.Heartbeat:Connect(function()
+            if humanoid.Parent and humanoid.WalkSpeed ~= SPEEDIER_VALUE then
+                humanoid.WalkSpeed = SPEEDIER_VALUE
+            end
+        end)
+    end
+
+    if enabled then
+        local character = player.Character or player.CharacterAdded:Wait()
+        applySpeed(character)
+
+        buttonStates.speedierRespawn = player.CharacterAdded:Connect(function(character)
+            applySpeed(character)
+        end)
+    else
+        if speedierConnection then
+            speedierConnection:Disconnect()
+            speedierConnection = nil
+        end
+
+        if buttonStates.speedierRespawn then
+            buttonStates.speedierRespawn:Disconnect()
+            buttonStates.speedierRespawn = nil
+        end
+
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+    end
+
+end)
+
+-- EDITOR TEAM BUTTON (Trolls)
+
+local player = game.Players.LocalPlayer
+local remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("Team")
+local RunService = game:GetService("RunService")
+
+local forcing = false
+local connection = nil
+
+createButton("main","editor\n team", function(state)
+
+    if state then
+        forcing = true
+
+        connection = RunService.Heartbeat:Connect(function()
+            if forcing then
+                remote:FireServer("Creating Character")
+            end
+        end)
+
+    else
+        forcing = false
+
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+    end
+
+end)
+
+-- star oath headband
+local starOathOriginals = {} -- store original transparencies
+
+-- create button
+createButton("accessories","star oath\nheadband", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found!")
+        return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories not found!")
+        return
+    end
+
+    local headband = accessories:FindFirstChild("Star Oath Headband")
+    if not headband then
+        warn("Star Oath Headband not found!")
+        return
+    end
+
+    -- toggle transparency
+    for _, part in ipairs(headband:GetDescendants()) do
+        if part:IsA("BasePart") and not string.match(part.Name:lower(), "long") then
+            if enabled then
+                starOathOriginals[part] = part.Transparency
+                part.Transparency = 0
+            else
+                if starOathOriginals[part] then
+                    part.Transparency = starOathOriginals[part]
+                end
+            end
+        end
+    end
+
+end)
+
+-- left arm star oath
+createButton("accessories","left arm\nstar oath", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+        return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories folder not found in EditorRig!")
+        return
+    end
+
+    local leftArm = accessories:FindFirstChild("Left Arm Star Oath")
+    if not leftArm then
+        warn("Left Arm Star Oath not found in Accessories")
+        return
+    end
+
+    -- toggle parts and components 
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            -- BaseParts: transparency 0 = enabled, 1 = disabled
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    toggleAll(leftArm)
+
+end)
+
+-- right arm star oath
+createButton("accessories","right arm\nstar oath", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+        return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories folder not found in EditorRig!")
+        return
+    end
+
+    local rightArm = accessories:FindFirstChild("Right Arm Star Oath")
+    if not rightArm then
+        warn("Right Arm Star Oath not found in Accessories")
+        return
+    end
+
+    -- toggle parts and components
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            -- BaseParts: transparency 0 = enabled, 1 = disabled
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    toggleAll(rightArm)
+
+end)
+
+-- star oath neckpiece
+createButton("accessories","star oath\nneckpiece", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+        return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories folder not found in EditorRig!")
+        return
+    end
+
+    local neckpiece = accessories:FindFirstChild("Star Oath Neckpiece")
+    if not neckpiece then
+        warn("Star Oath Neckpiece not found in Accessories")
+        return
+    end
+
+    -- toggle parts and components 
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            -- BaseParts: transparency 0 = enabled, 1 = disabled
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    toggleAll(neckpiece)
+
+end)
+
+-- mohawk
+createButton("accessories","mohawk", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+        return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories folder not found in EditorRig!")
+        return
+    end
+
+    local mohawk = accessories:FindFirstChild("Mohawk")
+    if not mohawk then
+        warn("Mohawk not found in Accessories")
+        return
+    end
+
+    -- toggle parts and components
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            -- BaseParts: transparency 0 = enabled, 1 = disabled
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    toggleAll(mohawk)
+
+end)
+
+-- eyecover mohawk 
+createButton("accessories","eyecover\nmohawk", function(enabled)
+
+ -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+     return
+    end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then
+        warn("Accessories folder not found in EditorRig!")
+        return
+    end
+
+    local mohawk = accessories:FindFirstChild("Eyecover Mohawk")
+    if not mohawk then
+        warn("Eyecover Mohawk not found in Accessories")
+        return
+    end
+
+    -- toggle parts and components
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            -- BaseParts: transparency 0 = enabled, 1 = disabled
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    toggleAll(mohawk)
+
+end)
+
+-- half pupil shine
+createButton("accessories","half pupil\n shine",function(enabled)
+
+    local workspace = game:GetService("Workspace")
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+
+    local halfPupil = editorRig:FindFirstChild("Half Pupil Shine")
+    if not halfPupil then return end
+
+    local transparency = enabled and 0 or 1
+
+    if halfPupil:IsA("BasePart") then
+        halfPupil.Transparency = transparency
+    end
+
+    for _, obj in ipairs(halfPupil:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = transparency
+        end
+    end
+
+end)
+
+-- fairy necklace
+createButton("accessories","fairy necklace",function(enabled)
+
+    local workspace = game:GetService("Workspace")
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+
+    local targets = {
+        "FairyLightsContributor",
+        "FairyStarContributor",
+        "FairyWiresContributor"
+    }
+
+    for _, name in ipairs(targets) do
+        local obj = editorRig:FindFirstChild(name)
+
+        if obj then
+
+            local transparency = enabled and 0 or 1
+            local emitEnabled = enabled
+
+            -- direct part
+            if obj:IsA("BasePart") then
+                obj.Transparency = transparency
+                obj.LocalTransparencyModifier = transparency
+            end
+
+            -- descendants
+            for _, descendant in ipairs(obj:GetDescendants()) do
+
+                if descendant:IsA("BasePart") then
+                    descendant.Transparency = transparency
+                    descendant.LocalTransparencyModifier = transparency
+                end
+
+                if descendant:IsA("ParticleEmitter")
+                or descendant:IsA("Trail")
+                or descendant:IsA("PointLight") then
+                    descendant.Enabled = emitEnabled
+                end
+
+            end
+
+        end
+    end
+
+end)
+
+-- left checkered cuff
+createButton("accessories","left\n checkered cuff",function(enabled)
+
+    local workspace = game:GetService("Workspace")
+
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then return end
+
+    local leftFolder = accessories:FindFirstChild("Front Left Checkered Cuffs")
+    if not leftFolder then return end
+
+    local transparency = enabled and 0 or 1
+
+    for _, obj in ipairs(leftFolder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = transparency
+            obj.LocalTransparencyModifier = transparency
+        end
+
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("PointLight") then
+            obj.Enabled = enabled
+        end
+    end
+
+end)
+
+-- right checkered cuff
+createButton("accessories","right\n checkered cuff",function(enabled)
+
+    local workspace = game:GetService("Workspace")
+
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+
+    local accessories = editorRig:FindFirstChild("Accessories")
+    if not accessories then return end
+
+    local rightFolder = accessories:FindFirstChild("Front Right Checkered Cuffs")
+    if not rightFolder then return end
+
+    local transparency = enabled and 0 or 1
+
+    for _, obj in ipairs(rightFolder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = transparency
+            obj.LocalTransparencyModifier = transparency
+        end
+
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("PointLight") then
+            obj.Enabled = enabled
+        end
+    end
+
+end)
+
+-- back left partial bandage
+createButton("accessories","back left\npartial bandage",function(enabled)
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+    local folder = editorRig:FindFirstChild("Accessories"):FindFirstChild("Back Left Partial Bandage")
+    if not folder then return end
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = enabled and 0 or 1
+            obj.LocalTransparencyModifier = enabled and 0 or 1
+        end
+    end
+end)
+
+-- back right partial bandage
+createButton("accessories","back right\npartial bandage",function(enabled)
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+    local folder = editorRig:FindFirstChild("Accessories"):FindFirstChild("Back Right Partial Bandage")
+    if not folder then return end
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = enabled and 0 or 1
+            obj.LocalTransparencyModifier = enabled and 0 or 1
+        end
+    end
+end)
+
+-- BODY BANDAGE
+createButton("accessories","body\nbandage",function(enabled)
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+    local folder = editorRig:FindFirstChild("Accessories"):FindFirstChild("Body Bandage")
+    if not folder then return end
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = enabled and 0 or 1
+            obj.LocalTransparencyModifier = enabled and 0 or 1
+        end
+    end
+end)
+
+-- front left partial bandage
+createButton("accessories","front left\npartial bandage",function(enabled)
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+    local folder = editorRig:FindFirstChild("Accessories"):FindFirstChild("Front Left Partial Bandage")
+    if not folder then return end
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = enabled and 0 or 1
+            obj.LocalTransparencyModifier = enabled and 0 or 1
+        end
+    end
+end)
+
+-- front right partial bandage
+createButton("accessories","front right\npartial bandage",function(enabled)
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then return end
+    local folder = editorRig:FindFirstChild("Accessories"):FindFirstChild("Front Right Partial Bandage")
+    if not folder then return end
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Transparency = enabled and 0 or 1
+            obj.LocalTransparencyModifier = enabled and 0 or 1
+        end
+    end
+end)
+
+-- everything
+createButton("accessories","everything", function(enabled)
+
+    -- find EditorRig
+    local editorRig = workspace:FindFirstChild("EditorRig")
+    if not editorRig then
+        warn("EditorRig not found in workspace!")
+        return
+    end
+
+    -- toggle baseparts
+    local function toggleAll(model)
+        for _, item in ipairs(model:GetDescendants()) do
+            if item:IsA("BasePart") then
+                item.Transparency = enabled and 0 or 1
+            end
+
+            -- components with enabled
+            if item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Trail") then
+                item.Enabled = enabled
+            elseif item:FindFirstChild("Enabled") and typeof(item.Enabled.Value) == "boolean" then
+                item.Enabled = enabled
+            end
+        end
+    end
+
+    -- apply
+    toggleAll(editorRig)
+
+end)
+
+  -- spam clones
+local function toggleSpamClones(enabled)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local root = character:WaitForChild("HumanoidRootPart")
+    local clonesPerTick = 5
+    if enabled then
+        cloneRunning = true
+        cloneThread = task.spawn(function()
+            while cloneRunning do
+                for i=1,clonesPerTick do
+                    local clone = character:Clone()
+                    clone.Parent = Workspace
+                    clone:SetPrimaryPartCFrame(CFrame.new(root.Position+Vector3.new(math.random(-10,10),0,math.random(-10,10))))
+                    for _, part in pairs(clone:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide=false end end
+                    Debris:AddItem(clone,20)
+                end
+                task.wait(0.2)
+            end
+        end)
+    else cloneRunning=false end
+end
+
+-- rainbow glow
+local SPEED = 0.6
+local rgConnection, rgHighlight
+local originalParts = {}
+
+local function toggleRainbow(enabled)
+
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    -- stop existing effect
+    if rgConnection then
+        rgConnection:Disconnect()
+        rgConnection = nil
+    end
+
+    if rgHighlight then
+        rgHighlight:Destroy()
+        rgHighlight = nil
+    end
+
+    -- restore original appearance
+    for part, data in pairs(originalParts) do
+        if part and part.Parent then
+            part.Material = data.Material
+            part.Color = data.Color
+            part.Reflectance = data.Reflectance
+        end
+    end
+
+    originalParts = {}
+
+    if not enabled then
+        return
+    end
+
+    task.wait(0.1)
+
+    -- save original + apply neon
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+
+            originalParts[obj] = {
+                Material = obj.Material,
+                Color = obj.Color,
+                Reflectance = obj.Reflectance
+            }
+
+            obj.Material = Enum.Material.Neon
+            obj.Reflectance = 0
+        end
+    end
+
+    rgHighlight = Instance.new("Highlight")
+    rgHighlight.Parent = char
+    rgHighlight.FillTransparency = 0.25
+    rgHighlight.OutlineTransparency = 1
+    rgHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+    local hue = 0
+
+    rgConnection = RunService.RenderStepped:Connect(function(dt)
+
+        if not char.Parent then return end
+
+        hue = (hue + dt * SPEED) % 1
+        local color = Color3.fromHSV(hue,1,1)
+
+        for part in pairs(originalParts) do
+            if part and part.Parent then
+                part.Color = color
+            end
+        end
+
+        if rgHighlight then
+            rgHighlight.FillColor = color
+        end
+
+    end)
+end
+
+-- create buttons
+-- Trolls
+
+-- Clients
+
+--==================================================
+-- CUSTOM NAME CHANGER
+--==================================================
+
+local NameChangerGui
+local NameChangerFrame
+local NameBox
+
+local originalPlayerName
+local currentCustomName
+local nameConnection
+
+local NAME_FONT = Enum.Font.FredokaOne
+
+--==================================================
+-- FIND PLAYER NAME
+--==================================================
+
+local function getPlayerNameLabel()
+    local billboards = workspace:FindFirstChild("Billboards")
+    if not billboards then
+        return nil
+    end
+
+    -- Change this path if your game's Billboards folder
+    -- uses a different folder name for the local player.
+    local playerFolder = billboards:FindFirstChild(
+        game.Players.LocalPlayer.Name
+    )
+
+    if not playerFolder then
+        return nil
+    end
+
+    local content = playerFolder:FindFirstChild("Content")
+    if not content then return nil end
+
+    local mainContainer = content:FindFirstChild("MainContainer")
+    if not mainContainer then return nil end
+
+    local playerNameContainer =
+        mainContainer:FindFirstChild("PlayerNameContainer")
+
+    if not playerNameContainer then
+        return nil
+    end
+
+    return playerNameContainer:FindFirstChild("PlayerName")
+end
+
+--==================================================
+-- STOP OVERRIDE
+--==================================================
+
+local function stopNameOverride()
+
+    if nameConnection then
+        nameConnection:Disconnect()
+        nameConnection = nil
+    end
+
+end
+
+--==================================================
+-- APPLY NAME
+--==================================================
+
+local function applyCustomName()
+
+    local label = getPlayerNameLabel()
+
+    if not label then
+        warn("PlayerName label not found!")
+        return
+    end
+
+    -- Save original text only once
+    if originalPlayerName == nil then
+        originalPlayerName = label.Text
+    end
+
+    local typedName = NameBox.Text
+
+    if typedName == "" then
+        return
+    end
+
+    currentCustomName = "(@" .. typedName .. ")"
+
+    stopNameOverride()
+
+    nameConnection = game:GetService("RunService").RenderStepped:Connect(
+        function()
+
+            if label
+                and label.Parent
+                and currentCustomName then
+
+                if label.Text ~= currentCustomName then
+                    label.Text = currentCustomName
+                end
+
+            end
+
+        end
+    )
+
+end
+
+--==================================================
+-- RESET NAME
+--==================================================
+
+local function resetCustomName()
+
+    currentCustomName = nil
+
+    stopNameOverride()
+
+    local label = getPlayerNameLabel()
+
+    if label and originalPlayerName then
+        label.Text = originalPlayerName
+    end
+
+    originalPlayerName = nil
+
+end
+
+--==================================================
+-- CREATE MINI GUI
+--==================================================
+
+local function createNameChanger()
+
+    if NameChangerGui then
+        NameChangerGui.Enabled = true
+        return
+    end
+
+    NameChangerGui = Instance.new("ScreenGui")
+    NameChangerGui.Name = "UsernameChangerGui"
+    NameChangerGui.ResetOnSpawn = false
+    NameChangerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NameChangerGui.Parent =
+        game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    --==================================================
+    -- FRAME
+    --==================================================
+
+    NameChangerFrame = Instance.new("Frame")
+    NameChangerFrame.Name = "UsernameChanger"
+    NameChangerFrame.Size = UDim2.new(0, 420, 0, 210)
+    NameChangerFrame.Position =
+        UDim2.new(0.5, -210, 0.5, -105)
+
+    NameChangerFrame.BackgroundColor3 =
+        Color3.fromRGB(102, 66, 99)
+
+    NameChangerFrame.BorderSizePixel = 0
+    NameChangerFrame.Parent = NameChangerGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 14)
+    frameCorner.Parent = NameChangerFrame
+
+    --==================================================
+    -- TITLE / DRAG BAR
+    --==================================================
+
+    local dragBar = Instance.new("Frame")
+    dragBar.Size = UDim2.new(1, 0, 0, 45)
+    dragBar.BackgroundTransparency = 1
+    dragBar.Parent = NameChangerFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+
+    title.BackgroundTransparency = 1
+    title.Text = "custom name"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 21
+    title.Font = NAME_FONT
+    title.Parent = dragBar
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    local UserInputService =
+        game:GetService("UserInputService")
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    dragBar.InputBegan:Connect(function(input)
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseButton1
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = NameChangerFrame.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState ==
+                    Enum.UserInputState.End then
+
+                    dragging = false
+
+                end
+
+            end)
+
+        end
+
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then
+            return
+        end
+
+        if input.UserInputType ==
+            Enum.UserInputType.MouseMovement
+            or input.UserInputType ==
+            Enum.UserInputType.Touch then
+
+            local delta =
+                input.Position - dragStart
+
+            NameChangerFrame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+
+        end
+
+    end)
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    NameBox = Instance.new("TextBox")
+    NameBox.Name = "NameBox"
+
+    NameBox.Size = UDim2.new(1, -30, 0, 45)
+    NameBox.Position = UDim2.new(0, 15, 0, 55)
+
+    NameBox.BackgroundColor3 =
+        Color3.fromRGB(70, 46, 68)
+
+    NameBox.BorderSizePixel = 0
+
+    NameBox.Text = ""
+    NameBox.PlaceholderText = "type a custom name..."
+    NameBox.PlaceholderColor3 =
+        Color3.fromRGB(190, 175, 188)
+
+    NameBox.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    NameBox.TextSize = 17
+    NameBox.Font = NAME_FONT
+
+    NameBox.ClearTextOnFocus = false
+    NameBox.Parent = NameChangerFrame
+
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 10)
+    boxCorner.Parent = NameBox
+
+    --==================================================
+    -- APPLY NAME
+    --==================================================
+
+    local applyButton = Instance.new("TextButton")
+
+    applyButton.Name = "ApplyName"
+    applyButton.Size = UDim2.new(0, 185, 0, 45)
+    applyButton.Position = UDim2.new(0, 15, 0, 115)
+
+    applyButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    applyButton.BorderSizePixel = 0
+    applyButton.Text = "apply name"
+
+    applyButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    applyButton.TextSize = 17
+    applyButton.Font = NAME_FONT
+    applyButton.Parent = NameChangerFrame
+
+    local applyCorner = Instance.new("UICorner")
+    applyCorner.CornerRadius = UDim.new(0, 10)
+    applyCorner.Parent = applyButton
+
+    applyButton.MouseButton1Click:Connect(function()
+        applyCustomName()
+    end)
+
+    --==================================================
+    -- RESET
+    --==================================================
+
+    local resetButton = Instance.new("TextButton")
+
+    resetButton.Name = "ResetName"
+    resetButton.Size = UDim2.new(0, 185, 0, 45)
+    resetButton.Position = UDim2.new(0, 220, 0, 115)
+
+    resetButton.BackgroundColor3 =
+        Color3.fromRGB(130, 88, 127)
+
+    resetButton.BorderSizePixel = 0
+    resetButton.Text = "reset"
+
+    resetButton.TextColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    resetButton.TextSize = 17
+    resetButton.Font = NAME_FONT
+    resetButton.Parent = NameChangerFrame
+
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 10)
+    resetCorner.Parent = resetButton
+
+    resetButton.MouseButton1Click:Connect(function()
+        resetCustomName()
+    end)
+
+end
+
+--==================================================
+-- CREATEBUTTON
+--==================================================
+
+createButton("clients", "custom name", function(enabled)
+
+    if enabled then
+
+        createNameChanger()
+
+        NameChangerGui.Enabled = true
+
+    else
+
+        if NameChangerGui then
+            NameChangerGui.Enabled = false
+        end
+
+    end
+
+end)
+
+--==================================================
+-- LABELS
+--==================================================
+
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+
+local labelsGui = nil
+local labelsOpen = false
+
+local selectedPreset = nil
+local selectedColour = nil
+
+--==================================================
+-- PRESET LABELS
+--==================================================
+
+local presetLabels = {
+    {
+        role = "GameModerator",
+        name = "game moderator"
+    },
+
+    {
+        role = "Developer",
+        name = "developer"
+    },
+
+    {
+        role = "HeadOfStaff",
+        name = "head of staff"
+    },
+
+    {
+        role = "Owner",
+        name = "lead developer"
+    }
+}
+
+--==================================================
+-- COLOURS
+--==================================================
+
+local colours = {
+    {name = "red", colour = Color3.fromRGB(210,70,70)},
+    {name = "orange", colour = Color3.fromRGB(225,125,55)},
+    {name = "yellow", colour = Color3.fromRGB(225,200,65)},
+    {name = "green", colour = Color3.fromRGB(75,170,90)},
+    {name = "blue", colour = Color3.fromRGB(75,125,210)},
+    {name = "purple", colour = Color3.fromRGB(145,90,190)},
+    {name = "pink", colour = Color3.fromRGB(215,105,165)},
+    {name = "brown", colour = Color3.fromRGB(145,95,60)},
+    {name = "black", colour = Color3.fromRGB(25,25,25)},
+    {name = "gray", colour = Color3.fromRGB(130,130,130)},
+    {name = "white", colour = Color3.fromRGB(245,245,245)}
+}
+
+--==================================================
+-- TEXT WITH SHADOW
+--==================================================
+
+local function createLabelText(parent, text, size)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "ShadowText"
+    shadow.Parent = parent
+    shadow.Size = UDim2.new(1,0,1,0)
+    shadow.Position = UDim2.new(0,2,0,2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = text
+    shadow.Font = Enum.Font.FredokaOne
+    shadow.TextSize = size
+    shadow.TextColor3 = SHADOW
+    shadow.TextXAlignment = Enum.TextXAlignment.Center
+    shadow.TextYAlignment = Enum.TextYAlignment.Center
+    shadow.ZIndex = 2
+
+    local real = Instance.new("TextLabel")
+    real.Name = "RealText"
+    real.Parent = parent
+    real.Size = UDim2.new(1,0,1,0)
+    real.Position = UDim2.new(0,0,0,0)
+    real.BackgroundTransparency = 1
+    real.Text = text
+    real.Font = Enum.Font.FredokaOne
+    real.TextSize = size
+    real.TextColor3 = TEXT
+    real.TextXAlignment = Enum.TextXAlignment.Center
+    real.TextYAlignment = Enum.TextYAlignment.Center
+    real.ZIndex = 3
+
+end
+
+local function clearButtonText(button)
+
+    for _,child in ipairs(button:GetChildren()) do
+
+        if child.Name == "ShadowText"
+        or child.Name == "RealText" then
+
+            child:Destroy()
+
+        end
+
+    end
+
+end
+
+--==================================================
+-- GET CONTENT
+--==================================================
+
+local function getContent()
+
+    local billboards =
+        workspace:WaitForChild("Billboards")
+
+    local userFolder =
+        billboards:WaitForChild(player.Name)
+
+    local content =
+        userFolder:WaitForChild("Content")
+
+    return content
+end
+
+--==================================================
+-- REMOVE LABELS
+--==================================================
+
+local function removeAllLabels()
+
+    local content = getContent()
+
+    local names = {
+        "LocalGameModeratorLabel",
+        "LocalDeveloperLabel",
+        "LocalHeadOfStaffLabel",
+        "LocalOwnerLabel",
+        "LocalCustomLabel"
+    }
+
+    for _,name in ipairs(names) do
+
+        local old =
+            content:FindFirstChild(name)
+
+        if old then
+            old:Destroy()
+        end
+
+    end
+
+end
+
+--==================================================
+-- CREATE PRESET LABEL
+-- THIS USES YOUR EXACT WORKING METHOD
+--==================================================
+
+local function createPresetLabel(roleName)
+
+    local content =
+        getContent()
+
+    local backdrop =
+        content:WaitForChild("Backdrop")
+
+    -- ==========================================
+    -- FIND ROLE
+    -- ==========================================
+
+    local role =
+        ReplicatedFirst:WaitForChild(roleName)
+
+    -- ==========================================
+    -- FIND LABEL
+    -- ==========================================
+
+    local originalLabel =
+        role:WaitForChild("Label")
+
+    if not originalLabel then
+
+        warn(
+            roleName ..
+            " > Label not found!"
+        )
+
+        return false
+
+    end
+
+    if not originalLabel:IsA("TextLabel") then
+
+        warn(
+            roleName ..
+            " Label isn't a TextLabel!"
+        )
+
+        return false
+
+    end
+
+    -- ==========================================
+    -- REMOVE OLD COPY
+    -- ==========================================
+
+    local old =
+        content:FindFirstChild(
+            "Local" ..
+            roleName ..
+            "Label"
+        )
+
+    if old then
+        old:Destroy()
+    end
+
+    -- ==========================================
+    -- COPY LABEL
+    -- ==========================================
+
+    local newLabel =
+        originalLabel:Clone()
+
+    newLabel.Name =
+        "Local" ..
+        roleName ..
+        "Label"
+
+    -- ==========================================
+    -- PUT ABOVE BACKDROP
+    -- EXACTLY LIKE YOUR SCRIPT
+    -- ==========================================
+
+    newLabel.Parent = content
+
+    newLabel.AnchorPoint =
+        Vector2.new(
+            backdrop.AnchorPoint.X,
+            backdrop.AnchorPoint.Y
+        )
+
+    newLabel.Size =
+        backdrop.Size
+
+    newLabel.Position =
+        UDim2.new(
+            backdrop.Position.X.Scale,
+            backdrop.Position.X.Offset,
+            backdrop.Position.Y.Scale,
+            backdrop.Position.Y.Offset
+                - backdrop.AbsoluteSize.Y
+        )
+
+    newLabel.Visible = true
+
+    newLabel.ZIndex =
+        backdrop.ZIndex + 1
+
+    print(
+        roleName ..
+        " label placed above Backdrop!"
+    )
+
+    return true
+
+end
+
+--==================================================
+-- DESTROY GUI
+--==================================================
+
+local function destroyLabelsGui()
+
+    -- ONLY CLOSE THE GUI
+    -- KEEP THE CURRENT LABEL ON THE BILLBOARD
+
+    if labelsGui then
+        labelsGui:Destroy()
+        labelsGui = nil
+    end
+
+    labelsOpen = false
+
+end
+
+--==================================================
+-- OPEN GUI
+--==================================================
+
+local function openLabelsGui()
+
+    if labelsOpen then
+        return
+    end
+
+    labelsOpen = true
+
+    --==================================================
+    -- SCREEN GUI
+    --==================================================
+
+    labelsGui = Instance.new("ScreenGui")
+
+    labelsGui.Name =
+        "LabelsGui"
+
+    labelsGui.ResetOnSpawn =
+        false
+
+    labelsGui.IgnoreGuiInset =
+        true
+
+    labelsGui.DisplayOrder =
+        999998
+
+    labelsGui.Parent =
+        player.PlayerGui
+
+    --==================================================
+    -- MAIN FRAME
+    --==================================================
+
+    local frame =
+        Instance.new("Frame")
+
+    frame.Parent =
+        labelsGui
+
+    frame.Size =
+        UDim2.new(
+            0,
+            500,
+            0,
+            370
+        )
+
+    frame.Position =
+        UDim2.new(
+            0.5,
+            -250,
+            0.5,
+            -185
+        )
+
+    frame.BackgroundColor3 =
+        MAIN
+
+    frame.BorderSizePixel =
+        0
+
+    frame.Active =
+        true
+
+    Instance.new(
+        "UICorner",
+        frame
+    ).CornerRadius =
+        UDim.new(0,22)
+
+    --==================================================
+    -- DRAGGING
+    --==================================================
+
+    do
+
+        local dragging = false
+        local dragStart
+        local startPos
+
+        frame.InputBegan:Connect(function(input)
+
+            if input.UserInputType ==
+                Enum.UserInputType.MouseButton1
+            or input.UserInputType ==
+                Enum.UserInputType.Touch then
+
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+
+                input.Changed:Connect(function()
+
+                    if input.UserInputState ==
+                        Enum.UserInputState.End then
+
+                        dragging = false
+
+                    end
+
+                end)
+
+            end
+
+        end)
+
+        UIS.InputChanged:Connect(function(input)
+
+            if not dragging then
+                return
+            end
+
+            if input.UserInputType ==
+                Enum.UserInputType.MouseMovement
+            or input.UserInputType ==
+                Enum.UserInputType.Touch then
+
+                local delta =
+                    input.Position - dragStart
+
+                frame.Position =
+                    UDim2.new(
+                        startPos.X.Scale,
+                        startPos.X.Offset + delta.X,
+                        startPos.Y.Scale,
+                        startPos.Y.Offset + delta.Y
+                    )
+
+            end
+
+        end)
+
+    end
+
+    --==================================================
+    -- TITLE
+    --==================================================
+
+    local title =
+        Instance.new("Frame")
+
+    title.Parent =
+        frame
+
+    title.Size =
+        UDim2.new(
+            0,
+            180,
+            0,
+            45
+        )
+
+    title.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            -4
+        )
+
+    title.BackgroundColor3 =
+        RAISED
+
+    title.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        title
+    ).CornerRadius =
+        UDim.new(0,15)
+
+    createLabelText(
+        title,
+        "labels",
+        24
+    )
+
+    --==================================================
+    -- MINIMISE
+    --==================================================
+
+    local minimizeHolder =
+        Instance.new("Frame")
+
+    minimizeHolder.Parent =
+        frame
+
+    minimizeHolder.Size =
+        UDim2.new(
+            0,
+            40,
+            0,
+            40
+        )
+
+    minimizeHolder.Position =
+        UDim2.new(
+            1,
+            -54,
+            0,
+            -4
+        )
+
+    minimizeHolder.BackgroundColor3 =
+        TAB
+
+    minimizeHolder.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        minimizeHolder
+    ).CornerRadius =
+        UDim.new(0,13)
+
+    local minimizeButton =
+        Instance.new("TextButton")
+
+    minimizeButton.Parent =
+        minimizeHolder
+
+    minimizeButton.Size =
+        UDim2.new(1,0,1,0)
+
+    minimizeButton.BackgroundTransparency =
+        1
+
+    minimizeButton.Text =
+        ""
+
+    createLabelText(
+        minimizeHolder,
+        "-",
+        24
+    )
+
+    local minimized = false
+    local savedSize = frame.Size
+
+    minimizeButton.MouseButton1Click:Connect(function()
+
+        if not minimized then
+
+            savedSize =
+                frame.Size
+
+            minimized = true
+
+            for _,child in ipairs(
+                frame:GetChildren()
+            ) do
+
+                if child ~= title
+                and child ~= minimizeHolder then
+
+                    if child:IsA("GuiObject") then
+                        child.Visible = false
+                    end
+
+                end
+
+            end
+
+            frame.Size =
+                UDim2.new(
+                    0,
+                    500,
+                    0,
+                    55
+                )
+
+        else
+
+            minimized = false
+
+            frame.Size =
+                savedSize
+
+            for _,child in ipairs(
+                frame:GetChildren()
+            ) do
+
+                if child:IsA("GuiObject") then
+                    child.Visible = true
+                end
+
+            end
+
+        end
+
+    end)
+
+    --==================================================
+    -- PRESET SECTION
+    --==================================================
+
+    local presetSection =
+        Instance.new("Frame")
+
+    presetSection.Parent =
+        frame
+
+    presetSection.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            88
+        )
+
+    presetSection.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            52
+        )
+
+    presetSection.BackgroundColor3 =
+        INNER
+
+    presetSection.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        presetSection
+    ).CornerRadius =
+        UDim.new(0,15)
+
+    local presetButtons = {}
+
+    --==================================================
+    -- PRESET BUTTONS
+    --==================================================
+
+    for i,preset in ipairs(presetLabels) do
+
+        local column =
+            (i - 1) % 2
+
+        local row =
+            math.floor((i - 1) / 2)
+
+        local holder =
+            Instance.new("Frame")
+
+        holder.Parent =
+            presetSection
+
+        holder.Size =
+            UDim2.new(
+                0.5,
+                -10,
+                0,
+                32
+            )
+
+        holder.Position =
+            UDim2.new(
+                column * 0.5,
+                7,
+                0,
+                8 + row * 38
+            )
+
+        holder.BackgroundColor3 =
+            BUTTON
+
+        holder.BorderSizePixel =
+            0
+
+        Instance.new(
+            "UICorner",
+            holder
+        ).CornerRadius =
+            UDim.new(0,10)
+
+        local button =
+            Instance.new("TextButton")
+
+        button.Parent =
+            holder
+
+        button.Size =
+            UDim2.new(1,0,1,0)
+
+        button.BackgroundTransparency =
+            1
+
+        button.Text =
+            ""
+
+        createLabelText(
+            holder,
+            preset.name,
+            15
+        )
+
+        presetButtons[preset.role] =
+            holder
+
+        button.MouseButton1Click:Connect(function()
+
+            --==========================================
+            -- DESELECT CURRENT
+            --==========================================
+
+            if selectedPreset ==
+                preset.role then
+
+                selectedPreset = nil
+
+                removeAllLabels()
+
+                clearButtonText(holder)
+
+                holder.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    holder,
+                    preset.name,
+                    15
+                )
+
+                return
+
+            end
+
+            --==========================================
+            -- RESET ALL BUTTONS
+            --==========================================
+
+            for _,otherPreset in ipairs(
+                presetLabels
+            ) do
+
+                local other =
+                    presetButtons[
+                        otherPreset.role
+                    ]
+
+                clearButtonText(other)
+
+                other.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    other,
+                    otherPreset.name,
+                    15
+                )
+
+            end
+
+            --==========================================
+            -- SELECT
+            --==========================================
+
+            selectedPreset =
+                preset.role
+
+            holder.BackgroundColor3 =
+                BUTTON_CLICK
+
+            clearButtonText(holder)
+
+            createLabelText(
+                holder,
+                "✓ " .. preset.name,
+                15
+            )
+
+            --==========================================
+            -- REMOVE OLD LABEL
+            --==========================================
+
+            removeAllLabels()
+
+            --==========================================
+            -- CREATE NEW LABEL
+            --==========================================
+
+            createPresetLabel(
+                preset.role
+            )
+
+        end)
+
+    end
+
+    --==================================================
+    -- CUSTOM LABEL TITLE
+    --==================================================
+
+    local customTitle =
+        Instance.new("TextLabel")
+
+    customTitle.Parent =
+        frame
+
+    customTitle.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            22
+        )
+
+    customTitle.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            148
+        )
+
+    customTitle.BackgroundTransparency =
+        1
+
+    customTitle.Text =
+        "custom label"
+
+    customTitle.Font =
+        Enum.Font.FredokaOne
+
+    customTitle.TextSize =
+        18
+
+    customTitle.TextColor3 =
+        TEXT
+
+    customTitle.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    --==================================================
+    -- TEXTBOX
+    --==================================================
+
+    local textBoxHolder =
+        Instance.new("Frame")
+
+    textBoxHolder.Parent =
+        frame
+
+    textBoxHolder.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            35
+        )
+
+    textBoxHolder.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            173
+        )
+
+    textBoxHolder.BackgroundColor3 =
+        INNER
+
+    textBoxHolder.BorderSizePixel =
+        0
+
+    Instance.new(
+        "UICorner",
+        textBoxHolder
+    ).CornerRadius =
+        UDim.new(0,11)
+
+    local textBox =
+        Instance.new("TextBox")
+
+    textBox.Parent =
+        textBoxHolder
+
+    textBox.Size =
+        UDim2.new(
+            1,
+            -16,
+            1,
+            0
+        )
+
+    textBox.Position =
+        UDim2.new(
+            0,
+            8,
+            0,
+            0
+        )
+
+    textBox.BackgroundTransparency =
+        1
+
+    textBox.ClearTextOnFocus =
+        false
+
+    textBox.MultiLine =
+        false
+
+    textBox.TextWrapped =
+        false
+
+    textBox.Font =
+        Enum.Font.FredokaOne
+
+    textBox.TextSize =
+        16
+
+    textBox.TextColor3 =
+        TEXT
+
+    textBox.PlaceholderText =
+        "type your custom label..."
+
+    textBox.PlaceholderColor3 =
+        RAISED
+
+    textBox.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    textBox.TextYAlignment =
+        Enum.TextYAlignment.Center
+
+    --==================================================
+    -- APPLY BUTTON
+    --==================================================
+
+    local applyButton =
+        Instance.new("TextButton")
+
+    applyButton.Parent =
+        frame
+
+    applyButton.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            35
+        )
+
+    applyButton.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            215
+        )
+
+    applyButton.BackgroundColor3 =
+        BUTTON
+
+    applyButton.BorderSizePixel =
+        0
+
+    applyButton.Text =
+        ""
+
+    Instance.new(
+        "UICorner",
+        applyButton
+    ).CornerRadius =
+        UDim.new(0,11)
+
+    createLabelText(
+        applyButton,
+        "apply custom label",
+        17
+    )
+
+    --==================================================
+    -- COLOUR TITLE
+    --==================================================
+
+    local colourTitle =
+        Instance.new("TextLabel")
+
+    colourTitle.Parent =
+        frame
+
+    colourTitle.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            20
+        )
+
+    colourTitle.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            258
+        )
+
+    colourTitle.BackgroundTransparency =
+        1
+
+    colourTitle.Text =
+        "text colour"
+
+    colourTitle.Font =
+        Enum.Font.FredokaOne
+
+    colourTitle.TextSize =
+        15
+
+    colourTitle.TextColor3 =
+        TEXT
+
+    colourTitle.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    --==================================================
+    -- COLOUR SCROLL
+    --==================================================
+
+    local colourScroll =
+        Instance.new("ScrollingFrame")
+
+    colourScroll.Parent =
+        frame
+
+    colourScroll.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            38
+        )
+
+    colourScroll.Position =
+        UDim2.new(
+            0,
+            14,
+            0,
+            282
+        )
+
+    colourScroll.BackgroundTransparency =
+        1
+
+    colourScroll.BorderSizePixel =
+        0
+
+    colourScroll.ScrollBarThickness =
+        4
+
+    colourScroll.ScrollingDirection =
+        Enum.ScrollingDirection.X
+
+    local colourLayout =
+        Instance.new("UIListLayout")
+
+    colourLayout.Parent =
+        colourScroll
+
+    colourLayout.FillDirection =
+        Enum.FillDirection.Horizontal
+
+    colourLayout.Padding =
+        UDim.new(0,5)
+
+    colourLayout.VerticalAlignment =
+        Enum.VerticalAlignment.Center
+
+    local colourButtons = {}
+
+    for _,option in ipairs(colours) do
+
+        local holder =
+            Instance.new("Frame")
+
+        holder.Parent =
+            colourScroll
+
+        holder.Size =
+            UDim2.new(
+                0,
+                67,
+                0,
+                31
+            )
+
+        holder.BackgroundColor3 =
+            BUTTON
+
+        holder.BorderSizePixel =
+            0
+
+        Instance.new(
+            "UICorner",
+            holder
+        ).CornerRadius =
+            UDim.new(0,9)
+
+        local button =
+            Instance.new("TextButton")
+
+        button.Parent =
+            holder
+
+        button.Size =
+            UDim2.new(1,0,1,0)
+
+        button.BackgroundTransparency =
+            1
+
+        button.Text =
+            ""
+
+        createLabelText(
+            holder,
+            option.name,
+            11
+        )
+
+        colourButtons[option.name] =
+            holder
+
+        button.MouseButton1Click:Connect(function()
+
+            if selectedColour
+            and selectedColour.name ==
+                option.name then
+
+                selectedColour = nil
+
+            else
+
+                selectedColour = option
+
+            end
+
+            for name,other in pairs(
+                colourButtons
+            ) do
+
+                clearButtonText(other)
+
+                other.BackgroundColor3 =
+                    BUTTON
+
+                createLabelText(
+                    other,
+                    name,
+                    11
+                )
+
+            end
+
+            if selectedColour then
+
+                local selected =
+                    colourButtons[
+                        selectedColour.name
+                    ]
+
+                selected.BackgroundColor3 =
+                    BUTTON_CLICK
+
+                clearButtonText(selected)
+
+                createLabelText(
+                    selected,
+                    "✓ " ..
+                    selectedColour.name,
+                    11
+                )
+
+            end
+
+        end)
+
+    end
+
+    task.defer(function()
+
+        colourScroll.CanvasSize =
+            UDim2.new(
+                0,
+                colourLayout.AbsoluteContentSize.X + 10,
+                0,
+                0
+            )
+
+    end)
+
+    --==================================================
+    -- POPUP
+    --==================================================
+
+    local popup =
+        Instance.new("TextLabel")
+
+    popup.Parent =
+        frame
+
+    popup.Size =
+        UDim2.new(
+            1,
+            -28,
+            0,
+            32
+        )
+
+    popup.Position =
+        UDim2.new(
+            0,
+            14,
+            1,
+            -40
+        )
+
+    popup.BackgroundColor3 =
+        RAISED
+
+    popup.BackgroundTransparency =
+        1
+
+    popup.TextTransparency =
+        1
+
+    popup.Text =
+        ""
+
+    popup.Font =
+        Enum.Font.FredokaOne
+
+    popup.TextSize =
+        13
+
+    popup.TextColor3 =
+        TEXT
+
+    popup.ZIndex =
+        50
+
+    Instance.new(
+        "UICorner",
+        popup
+    ).CornerRadius =
+        UDim.new(0,10)
+
+    local popupNumber = 0
+
+    local function showPopup(message)
+
+        popupNumber += 1
+
+        local thisPopup =
+            popupNumber
+
+        popup.Text =
+            message
+
+        popup.BackgroundTransparency =
+            0
+
+        popup.TextTransparency =
+            0
+
+        task.delay(2.5,function()
+
+            if thisPopup ~= popupNumber then
+                return
+            end
+
+            if not popup.Parent then
+                return
+            end
+
+            for i = 1,10 do
+
+                popup.BackgroundTransparency =
+                    i / 10
+
+                popup.TextTransparency =
+                    i / 10
+
+                task.wait(0.04)
+
+            end
+
+            popup.Text = ""
+
+        end)
+
+    end
+
+    --==================================================
+    -- APPLY CUSTOM LABEL
+    --==================================================
+
+    applyButton.MouseButton1Click:Connect(function()
+
+        local typedText =
+            textBox.Text
+
+        if typedText:gsub("%s","") == ""
+        or not selectedColour then
+
+            showPopup(
+                "select a colour and label to apply custom label!"
+            )
+
+            return
+
+        end
+
+        --==============================================
+        -- GET BILLBOARD
+        --==============================================
+
+        local content =
+            getContent()
+
+        local backdrop =
+            content:WaitForChild("Backdrop")
+
+        --==============================================
+        -- REMOVE PRESET
+        --==============================================
+
+        removeAllLabels()
+
+        selectedPreset = nil
+
+        for _,preset in ipairs(
+            presetLabels
+        ) do
+
+            local holder =
+                presetButtons[
+                    preset.role
+                ]
+
+            clearButtonText(holder)
+
+            holder.BackgroundColor3 =
+                BUTTON
+
+            createLabelText(
+                holder,
+                preset.name,
+                15
+            )
+
+        end
+
+        --==============================================
+        -- USE DEVELOPER LABEL AS TEMPLATE
+        --==============================================
+
+        local developer =
+            ReplicatedFirst:WaitForChild(
+                "Developer"
+            )
+
+        local originalLabel =
+            developer:WaitForChild(
+                "Label"
+            )
+
+        if not originalLabel:IsA("TextLabel") then
+
+            warn(
+                "Developer Label isn't a TextLabel!"
+            )
+
+            return
+
+        end
+
+        --==============================================
+        -- COPY
+        --==============================================
+
+        local newLabel =
+            originalLabel:Clone()
+
+        newLabel.Name =
+            "LocalCustomLabel"
+
+        newLabel.Text =
+            typedText
+
+        newLabel.TextColor3 =
+            selectedColour.colour
+
+        --==============================================
+        -- EXACT SAME POSITIONING
+        --==============================================
+
+        newLabel.Parent =
+            content
+
+        newLabel.AnchorPoint =
+            Vector2.new(
+                backdrop.AnchorPoint.X,
+                backdrop.AnchorPoint.Y
+            )
+
+        newLabel.Size =
+            backdrop.Size
+
+        newLabel.Position =
+            UDim2.new(
+                backdrop.Position.X.Scale,
+                backdrop.Position.X.Offset,
+                backdrop.Position.Y.Scale,
+                backdrop.Position.Y.Offset
+                    - backdrop.AbsoluteSize.Y
+            )
+
+        newLabel.Visible =
+            true
+
+        newLabel.ZIndex =
+            backdrop.ZIndex + 1
+
+        print(
+            "Custom label placed above Backdrop!"
+        )
+
+    end)
+
+end
+
+--==================================================
+-- BUTTON
+--==================================================
+
+createButton(
+    "clients",
+    "labels",
+    function(enabled)
+
+        if enabled then
+
+            openLabelsGui()
+
+        else
+
+            destroyLabelsGui()
+
+        end
+
+    end
+)
+
+createButton("clients", "spawn npc", function(enabled)
+
+	-- ==========================================
+	-- CLEANUP OLD NPC
+	-- ==========================================
+
+	if _G.BlackWanderingCatCleanup then
+		_G.BlackWanderingCatCleanup()
+		_G.BlackWanderingCatCleanup = nil
+	end
+
+	if not enabled then
+		return
+	end
+
+	-- ==========================================
+	-- SERVICES
+	-- ==========================================
+
+	local Players = game:GetService("Players")
+	local RunService = game:GetService("RunService")
+	local Lighting = game:GetService("Lighting")
+
+	local player = Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+
+	-- ==========================================
+	-- SETTINGS
+	-- ==========================================
+
+	local MAX_DISTANCE = 200
+	local EFFECT_DISTANCE = 10
+	local MAX_HEAD_ANGLE = math.rad(90)
+
+	local SPEEDS = {
+		Walk = 5.5,
+		Trot = 8,
+		Canter = 12,
+		Sprint = 17
+	}
+
+	local ANIMATIONS = {
+		Walk = "rbxassetid://6590492612",
+		Idle = "rbxassetid://6590483615",
+		Trot = "rbxassetid://6590492234",
+		Canter = "rbxassetid://6590481784",
+		Sprint = "rbxassetid://6590486696"
+	}
+
+	local EYE_NAMES = {
+		leftsclera = true,
+		leftblind = true,
+		leftpupil = true,
+		leftpupilblind = true,
+		rightsclera = true,
+		rightblind = true,
+		rightpupil = true,
+		rightpupilblind = true
+	}
+
+	-- ==========================================
+	-- CLONE
+	-- ==========================================
+
+	local npc = character:Clone()
+	npc.Name = "BlackWanderingCat"
+
+	for _, obj in ipairs(npc:GetDescendants()) do
+		if obj:IsA("Script")
+		or obj:IsA("LocalScript")
+		or obj:IsA("ModuleScript") then
+			obj:Destroy()
+		end
+	end
+
+	npc.Parent = workspace
+
+	local root = npc:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		npc:Destroy()
+		return
+	end
+
+	local spawnPosition = root.Position
+
+	-- ==========================================
+	-- BLACK BODY + WHITE EYES
+	-- ==========================================
+
+	for _, obj in ipairs(npc:GetDescendants()) do
+
+		if obj:IsA("BasePart") then
+
+			if EYE_NAMES[obj.Name:lower()] then
+				obj.Color = Color3.new(1, 1, 1)
+				obj.Material = Enum.Material.Neon
+			else
+				obj.Color = Color3.new(0, 0, 0)
+				obj.Material = Enum.Material.SmoothPlastic
+			end
+		end
+	end
+
+	-- ==========================================
+	-- DARK AURA
+	-- ==========================================
+
+	local auraAttachment = Instance.new("Attachment")
+	auraAttachment.Name = "DarkAura"
+	auraAttachment.Parent = root
+
+	local aura = Instance.new("ParticleEmitter")
+	aura.Name = "ShadowParticles"
+	aura.Parent = auraAttachment
+
+	aura.Color = ColorSequence.new(Color3.new(0, 0, 0))
+	aura.LightEmission = 0
+	aura.Brightness = 0
+
+	aura.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.3, 0.35),
+		NumberSequenceKeypoint.new(0.7, 0.55),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+
+	aura.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.1, 0.2),
+		NumberSequenceKeypoint.new(0.7, 0.5),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+
+	aura.Lifetime = NumberRange.new(0.8, 2.8)
+	aura.Rate = 35
+	aura.Speed = NumberRange.new(0.2, 1.8)
+	aura.SpreadAngle = Vector2.new(180, 180)
+	aura.Rotation = NumberRange.new(0, 360)
+	aura.RotSpeed = NumberRange.new(-100, 100)
+	aura.Acceleration = Vector3.new(0, 1.5, 0)
+	aura.Drag = 3
+	aura.Shape = Enum.ParticleEmitterShape.Sphere
+	aura.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	aura.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+
+	-- ==========================================
+	-- CREEPY PARTICLES
+	-- ==========================================
+
+	local creepyAttachment = Instance.new("Attachment")
+	creepyAttachment.Name = "CreepyParticles"
+	creepyAttachment.Position = Vector3.new(0, 1.5, 0)
+	creepyAttachment.Parent = root
+
+	local creepy = Instance.new("ParticleEmitter")
+	creepy.Name = "FloatingShadows"
+	creepy.Parent = creepyAttachment
+
+	creepy.Color = ColorSequence.new(Color3.new(0, 0, 0))
+	creepy.LightEmission = 0
+
+	creepy.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(0.5, 0.7),
+		NumberSequenceKeypoint.new(1, 0)
+	})
+
+	creepy.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.15, 0.15),
+		NumberSequenceKeypoint.new(0.8, 0.5),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+
+	creepy.Lifetime = NumberRange.new(1.5, 3.5)
+	creepy.Rate = 12
+	creepy.Speed = NumberRange.new(0.5, 2)
+	creepy.SpreadAngle = Vector2.new(360, 360)
+	creepy.Rotation = NumberRange.new(0, 360)
+	creepy.RotSpeed = NumberRange.new(-180, 180)
+	creepy.Acceleration = Vector3.new(0, 2.5, 0)
+	creepy.Drag = 2
+	creepy.Shape = Enum.ParticleEmitterShape.Sphere
+	creepy.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+
+	-- ==========================================
+	-- HUMANOID
+	-- ==========================================
+
+	local humanoid = npc:FindFirstChildOfClass("Humanoid")
+
+	if not humanoid then
+		npc:Destroy()
+		return
+	end
+
+	humanoid.AutoRotate = true
+
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	-- ==========================================
+	-- ANIMATIONS
+	-- ==========================================
+
+	local tracks = {}
+
+	for name, id in pairs(ANIMATIONS) do
+
+		local animation = Instance.new("Animation")
+		animation.AnimationId = id
+
+		local track
+
+		pcall(function()
+			track = animator:LoadAnimation(animation)
+			track.Looped = true
+			track.Priority = Enum.AnimationPriority.Movement
+		end)
+
+		if track then
+			tracks[name] = track
+		end
+	end
+
+	if tracks.Idle then
+		tracks.Idle.Priority = Enum.AnimationPriority.Idle
+	end
+
+	local currentTrack
+
+	local function playMovement(gait)
+
+		if currentTrack == tracks[gait] then
+			return
+		end
+
+		if currentTrack then
+			currentTrack:Stop(0.15)
+		end
+
+		currentTrack = tracks[gait]
+
+		if currentTrack then
+			currentTrack:Play(0.15)
+		end
+
+		humanoid.WalkSpeed = SPEEDS[gait]
+	end
+
+	local function playIdle()
+
+		if currentTrack == tracks.Idle then
+			return
+		end
+
+		if currentTrack then
+			currentTrack:Stop(0.15)
+		end
+
+		currentTrack = tracks.Idle
+
+		if currentTrack then
+			currentTrack:Play(0.15)
+		end
+
+		humanoid.WalkSpeed = 0
+	end
+
+	-- ==========================================
+	-- RANDOM POSITION
+	-- ==========================================
+
+	local function getRandomPoint()
+
+		local angle = math.random() * math.pi * 2
+		local distance =
+			math.sqrt(math.random()) *
+			(MAX_DISTANCE - 15)
+
+		local target =
+			spawnPosition +
+			Vector3.new(
+				math.cos(angle) * distance,
+				0,
+				math.sin(angle) * distance
+			)
+
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = {npc}
+
+		local result = workspace:Raycast(
+			target + Vector3.new(0, 100, 0),
+			Vector3.new(0, -250, 0),
+			params
+		)
+
+		if result then
+			return result.Position +
+				Vector3.new(0, 3, 0)
+		end
+
+		return target
+	end
+
+	local function chooseGait()
+
+		local roll = math.random(1, 100)
+
+		if roll <= 68 then
+			return "Walk"
+		elseif roll <= 88 then
+			return "Trot"
+		elseif roll <= 97 then
+			return "Canter"
+		else
+			return "Sprint"
+		end
+	end
+
+	-- ==========================================
+	-- FADE SYSTEM
+	-- ==========================================
+
+	local fadeCancelled = false
+
+	local function fadeIn()
+
+		local parts = {}
+
+		for _, obj in ipairs(npc:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				table.insert(parts, {
+					part = obj,
+					original = obj.Transparency
+				})
+				obj.Transparency = 1
+			end
+		end
+
+		local start = os.clock()
+		local duration = 1
+
+		while os.clock() - start < duration
+			and npc.Parent
+			and not fadeCancelled do
+
+			local alpha =
+				math.clamp(
+					(os.clock() - start) / duration,
+					0,
+					1
+				)
+
+			for _, data in ipairs(parts) do
+				if data.part.Parent then
+					data.part.Transparency =
+						1 - ((1 - data.original) * alpha)
+				end
+			end
+
+			RunService.RenderStepped:Wait()
+		end
+
+		if not fadeCancelled then
+			for _, data in ipairs(parts) do
+				if data.part.Parent then
+					data.part.Transparency = data.original
+				end
+			end
+		end
+	end
+
+	local function fadeOutAndDestroy()
+
+		fadeCancelled = true
+
+		local parts = {}
+
+		for _, obj in ipairs(npc:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				table.insert(parts, {
+					part = obj,
+					original = obj.Transparency
+				})
+			end
+		end
+
+		local start = os.clock()
+		local duration = 0.8
+
+		while os.clock() - start < duration
+			and npc.Parent do
+
+			local alpha =
+				math.clamp(
+					(os.clock() - start) / duration,
+					0,
+					1
+				)
+
+			for _, data in ipairs(parts) do
+				if data.part.Parent then
+					data.part.Transparency =
+						data.original +
+						(1 - data.original) * alpha
+				end
+			end
+
+			RunService.RenderStepped:Wait()
+		end
+
+		if npc.Parent then
+			npc:Destroy()
+		end
+	end
+
+	-- ==========================================
+	-- NECK
+	-- ==========================================
+
+	local neck
+	local neckOriginalC0
+	local currentNeckC0
+
+	for _, obj in ipairs(npc:GetDescendants()) do
+
+		if obj:IsA("Motor6D")
+		and obj.Name:lower():find("neck") then
+
+			neck = obj
+			neckOriginalC0 = obj.C0
+			currentNeckC0 = obj.C0
+			break
+		end
+	end
+
+	local function getHeadTarget()
+
+		local targetCharacter = player.Character
+
+		if not targetCharacter then
+			return nil
+		end
+
+		local targetRoot =
+			targetCharacter:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if not targetRoot then
+			return nil
+		end
+
+		local offset =
+			targetRoot.Position - root.Position
+
+		if offset.Magnitude > EFFECT_DISTANCE then
+			return nil
+		end
+
+		local flatOffset =
+			Vector3.new(
+				offset.X,
+				0,
+				offset.Z
+			)
+
+		if flatOffset.Magnitude < 0.01 then
+			return targetRoot.Position
+		end
+
+		local direction = flatOffset.Unit
+
+		local forward =
+			Vector3.new(
+				root.CFrame.LookVector.X,
+				0,
+				root.CFrame.LookVector.Z
+			)
+
+		if forward.Magnitude < 0.01 then
+			return nil
+		end
+
+		forward = forward.Unit
+
+		local dot =
+			math.clamp(
+				forward:Dot(direction),
+				-1,
+				1
+			)
+
+		local angle = math.acos(dot)
+
+		-- 90° LEFT + 90° RIGHT.
+		if angle > MAX_HEAD_ANGLE then
+			return nil
+		end
+
+		-- ======================================
+		-- LINE OF SIGHT
+		-- ======================================
+
+		local params = RaycastParams.new()
+
+		params.FilterType =
+			Enum.RaycastFilterType.Exclude
+
+		params.FilterDescendantsInstances = {
+			npc,
+			targetCharacter
+		}
+
+		local origin =
+			root.Position +
+			Vector3.new(0, 2, 0)
+
+		local rayDirection =
+			targetRoot.Position - origin
+
+		local result =
+			workspace:Raycast(
+				origin,
+				rayDirection,
+				params
+			)
+
+		if result then
+			return nil
+		end
+
+		return targetRoot.Position
+	end
+
+	local function updateNeck(dt)
+
+		if not neck
+		or not neck.Parent
+		or not neckOriginalC0
+		or not currentNeckC0 then
+			return
+		end
+
+		local target = getHeadTarget()
+
+		local wantedC0 =
+			neckOriginalC0
+
+		if target then
+
+			local localTarget =
+				root.CFrame:PointToObjectSpace(target)
+
+			local yaw =
+				math.atan2(
+					-localTarget.X,
+					-localTarget.Z
+				)
+
+			local horizontalDistance =
+				Vector2.new(
+					localTarget.X,
+					localTarget.Z
+				).Magnitude
+
+			local pitch =
+				math.atan2(
+					localTarget.Y,
+					math.max(
+						horizontalDistance,
+						0.01
+					)
+				)
+
+			-- EXACTLY 90° EACH SIDE.
+			yaw =
+				math.clamp(
+					yaw,
+					-math.rad(90),
+					math.rad(90)
+				)
+
+			pitch =
+				math.clamp(
+					pitch,
+					math.rad(-45),
+					math.rad(45)
+				)
+
+			wantedC0 =
+				neckOriginalC0 *
+				CFrame.Angles(
+					-pitch,
+					yaw,
+					0
+				)
+		end
+
+		-- Smooth tracking and smooth return.
+		local alpha =
+			1 - math.exp(-6 * dt)
+
+		currentNeckC0 =
+			currentNeckC0:Lerp(
+				wantedC0,
+				alpha
+			)
+
+		neck.C0 = currentNeckC0
+	end
+
+	-- ==========================================
+	-- HORROR EFFECT
+	-- ==========================================
+
+	local camera = workspace.CurrentCamera
+
+	local horrorGui =
+		Instance.new("ScreenGui")
+
+	horrorGui.Name =
+		"BlackCatHorror"
+
+	horrorGui.IgnoreGuiInset = true
+	horrorGui.ResetOnSpawn = false
+	horrorGui.DisplayOrder = 999
+	horrorGui.Parent =
+		player:WaitForChild("PlayerGui")
+
+	local darkness =
+		Instance.new("Frame")
+
+	darkness.Name = "Darkness"
+	darkness.Size =
+		UDim2.fromScale(1, 1)
+
+	darkness.BackgroundColor3 =
+		Color3.new(0, 0, 0)
+
+	darkness.BackgroundTransparency = 1
+	darkness.BorderSizePixel = 0
+	darkness.ZIndex = 1
+	darkness.Parent = horrorGui
+
+	local colorCorrection =
+		Instance.new("ColorCorrectionEffect")
+
+	colorCorrection.Name =
+		"BlackCatHorrorColor"
+
+	colorCorrection.Saturation = 0
+	colorCorrection.Contrast = 0
+	colorCorrection.Brightness = 0
+	colorCorrection.Parent = Lighting
+
+	local blur =
+		Instance.new("BlurEffect")
+
+	blur.Name =
+		"BlackCatHorrorBlur"
+
+	blur.Size = 0
+	blur.Parent = Lighting
+
+	-- ==========================================
+	-- CONNECTIONS
+	-- ==========================================
+
+	local connections = {}
+	local destroyed = false
+
+	local function cleanup()
+
+		if destroyed then
+			return
+		end
+
+		destroyed = true
+
+		for _, connection in ipairs(connections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+
+		if horrorGui then
+			horrorGui:Destroy()
+		end
+
+		if colorCorrection then
+			colorCorrection:Destroy()
+		end
+
+		if blur then
+			blur:Destroy()
+		end
+
+		for _, track in pairs(tracks) do
+			pcall(function()
+				track:Stop()
+			end)
+		end
+
+		if npc and npc.Parent then
+			task.spawn(fadeOutAndDestroy)
+		end
+	end
+
+	_G.BlackWanderingCatCleanup = cleanup
+
+	-- ==========================================
+	-- WANDERING
+	-- ==========================================
+
+	task.spawn(function()
+
+		playIdle()
+
+		while npc.Parent
+		and humanoid.Health > 0
+		and not destroyed do
+
+			task.wait(
+				math.random(8, 18) / 10
+			)
+
+			if destroyed
+			or not npc.Parent then
+				break
+			end
+
+			local gait =
+				chooseGait()
+
+			local target =
+				getRandomPoint()
+
+			playMovement(gait)
+			humanoid:MoveTo(target)
+
+			local duration
+
+			if gait == "Walk" then
+				duration = math.random(5, 10)
+			elseif gait == "Trot" then
+				duration = math.random(3, 7)
+			elseif gait == "Canter" then
+				duration = math.random(2, 5)
+			else
+				duration = math.random(1, 3)
+			end
+
+			local start = os.clock()
+
+			while os.clock() - start < duration
+				and npc.Parent
+				and humanoid.Health > 0
+				and not destroyed do
+
+				local offset =
+					root.Position -
+					spawnPosition
+
+				if offset.Magnitude >= MAX_DISTANCE then
+
+					humanoid:MoveTo(
+						spawnPosition +
+						offset.Unit *
+						(MAX_DISTANCE - 25)
+					)
+
+					break
+				end
+
+				task.wait(0.15)
+			end
+
+			humanoid:MoveTo(root.Position)
+			playIdle()
+		end
+	end)
+
+	-- ==========================================
+	-- PROXIMITY + CAMERA SHAKE
+	-- ==========================================
+
+	table.insert(
+		connections,
+
+		RunService.RenderStepped:Connect(function(dt)
+
+			if destroyed
+			or not npc.Parent
+			or not root.Parent then
+				return
+			end
+
+			updateNeck(dt)
+
+			local currentCharacter =
+				player.Character
+
+			if not currentCharacter then
+				return
+			end
+
+			local playerRoot =
+				currentCharacter:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			if not playerRoot then
+				return
+			end
+
+			local distance =
+				(
+					playerRoot.Position -
+					root.Position
+				).Magnitude
+
+			if distance >= EFFECT_DISTANCE then
+
+				darkness.BackgroundTransparency = 1
+
+				colorCorrection.Saturation = 0
+				colorCorrection.Contrast = 0
+				colorCorrection.Brightness = 0
+
+				blur.Size = 0
+
+				return
+			end
+
+			local intensity =
+				math.clamp(
+					(EFFECT_DISTANCE - distance)
+					/ EFFECT_DISTANCE,
+					0,
+					1
+				)
+
+			local creepy =
+				intensity ^ 0.55
+
+			-- VERY DARK.
+			darkness.BackgroundTransparency =
+				1 - creepy * 0.72
+
+			-- FULL DESATURATION.
+			colorCorrection.Saturation =
+				-creepy
+
+			colorCorrection.Contrast =
+				creepy * 0.7
+
+			colorCorrection.Brightness =
+				-creepy * 0.3
+
+			blur.Size =
+				creepy * 3.5
+
+			-- ==================================
+			-- STRONG SHAKE
+			-- ==================================
+
+			local time = os.clock()
+
+			local shake =
+				0.18 * creepy
+
+			local x =
+				math.sin(time * 15) *
+				shake
+
+			local y =
+				math.cos(time * 19) *
+				shake
+
+			local z =
+				math.sin(time * 11) *
+				shake * 0.75
+
+			camera.CFrame =
+				camera.CFrame *
+				CFrame.Angles(
+					math.rad(x),
+					math.rad(y),
+					math.rad(z)
+				)
+
+			if math.random() <
+				creepy * 0.22 then
+
+				camera.CFrame =
+					camera.CFrame *
+					CFrame.new(
+						(math.random() - 0.5)
+							* 0.18
+							* creepy,
+
+						(math.random() - 0.5)
+							* 0.18
+							* creepy,
+
+						0
+					)
+			end
+		end)
+	)
+
+	-- ==========================================
+	-- FADE IN
+	-- ==========================================
+
+	task.spawn(function()
+		fadeIn()
+	end)
+
+end)
+
+createButton("clients","spam clones",toggleSpamClones)
+createButton("clients","rainbow glow",toggleRainbow)
+-- ==========================================
+-- RAINBOW 2
+-- FAST RAINBOW ON YOUR WCUE USERNAME FOLDER
+-- ==========================================
+
+local rainbow2Connection
+local rainbow2Original = {}
+
+createButton("clients", "rainbow 2", function(enabled)
+
+    -- ======================================
+    -- STOP
+    -- ======================================
+
+    if not enabled then
+
+        if rainbow2Connection then
+            rainbow2Connection:Disconnect()
+            rainbow2Connection = nil
+        end
+
+        -- Restore original colours
+        for obj, colour in pairs(rainbow2Original) do
+            if obj and obj.Parent then
+                obj.Color = colour
+            end
+        end
+
+        table.clear(rainbow2Original)
+
+        return
+    end
+
+    -- ======================================
+    -- STOP PREVIOUS CONNECTION
+    -- ======================================
+
+    if rainbow2Connection then
+        rainbow2Connection:Disconnect()
+        rainbow2Connection = nil
+    end
+
+    table.clear(rainbow2Original)
+
+    -- ======================================
+    -- FIND YOUR USERNAME FOLDER
+    -- ======================================
+
+    local usernameFolder =
+        workspace:FindFirstChild(player.Name)
+
+    if not usernameFolder then
+        warn("Rainbow 2: username folder not found!")
+        return
+    end
+
+    -- ======================================
+    -- SAVE ORIGINAL COLOURS
+    -- ======================================
+
+    local parts = {}
+
+    for _, obj in ipairs(
+        usernameFolder:GetDescendants()
+    ) do
+
+        if obj:IsA("BasePart") then
+
+            rainbow2Original[obj] = obj.Color
+            table.insert(parts, obj)
+
+        end
+
+    end
+
+    -- ======================================
+    -- FAST RAINBOW
+    -- ======================================
+
+    local hue = 0
+
+    rainbow2Connection =
+        game:GetService("RunService").RenderStepped:Connect(
+            function(deltaTime)
+
+                hue = (hue + deltaTime * 2.5) % 1
+
+                for i, obj in ipairs(parts) do
+
+                    if obj and obj.Parent then
+
+                        -- Slight offset between parts
+                        -- so the whole morph has a rainbow
+                        local partHue =
+                            (hue + (i / #parts) * 0.25) % 1
+
+                        obj.Color =
+                            Color3.fromHSV(
+                                partHue,
+                                0.75,
+                                1
+                            )
+
+                    end
+
+                end
+
+            end
+        )
+
+end)
+
+createButton("clients", "science\n diagram", function(enabled)
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local shrinkAmount = 0.3 -- 30% of original size
+
+    if enabled then
+        -- Save original sizes
+        originalSizes = {}
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("MeshPart") then
+                originalSizes[part] = part.Size
+                part.Size = part.Size * shrinkAmount
+            end
+        end
+
+        -- save original humanoid scales
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            originalScales = {}
+            local scaleProps = {"BodyHeightScale", "BodyWidthScale", "HeadScale"}
+            for _, propName in ipairs(scaleProps) do
+                local prop = humanoid:FindFirstChild(propName)
+                if prop and typeof(prop.Value) == "number" then
+                    originalScales[propName] = prop.Value
+                    prop.Value = prop.Value * shrinkAmount
+                end
+            end
+        end
+    else
+        -- restore original sizes
+        for part, size in pairs(originalSizes) do
+            if part and part.Parent then
+                part.Size = size
+            end
+        end
+
+        -- restore humanoid scales
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            for propName, value in pairs(originalScales) do
+                local prop = humanoid:FindFirstChild(propName)
+                if prop and typeof(prop.Value) == "number" then
+                    prop.Value = value
+                end
+            end
+        end
+    end
+end)
+
+-- bigger
+local biggerOriginalScale = nil
+
+createButton("clients","big",function(enabled)
+
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    if enabled then
+        if not biggerOriginalScale then
+            biggerOriginalScale = char:GetScale()
+        end
+
+        char:ScaleTo(biggerOriginalScale * 10) -- 10x size
+
+    else
+        if biggerOriginalScale then
+            char:ScaleTo(biggerOriginalScale)
+        end
+    end
+
+end)
+
+-- SLIT EYES
+local slitOriginal = {}
+
+createButton("clients", "slit eyes", function(enabled)
+
+    local character = player.Character
+    if not character then return end
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
+
+    if enabled then
+
+        -- Find EVERY pupil
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") and pupilNames[obj.Name:lower()] then
+
+                -- Only save it once
+                if not slitOriginal[obj] then
+                    slitOriginal[obj] = {
+                        Size = obj.Size
+                    }
+                end
+
+                -- Make it narrow horizontally
+                local originalSize = slitOriginal[obj].Size
+
+                obj.Size = Vector3.new(
+                    originalSize.X * 0.45,
+                    originalSize.Y,
+                    originalSize.Z
+                )
+            end
+        end
+
+    else
+
+        -- Restore EVERY pupil
+        for obj, original in pairs(slitOriginal) do
+            if obj and obj.Parent then
+                obj.Size = original.Size
+            end
+        end
+
+        table.clear(slitOriginal)
+    end
+end)
+
+-- WIDE EYES
+local wideOriginal = {}
+
+createButton("clients", "wide eyes", function(enabled)
+
+    local character = player.Character
+    if not character then return end
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
+
+    if enabled then
+
+        -- Find EVERY pupil
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") and pupilNames[obj.Name:lower()] then
+
+                -- Save original size
+                if not wideOriginal[obj] then
+                    wideOriginal[obj] = {
+                        Size = obj.Size
+                    }
+                end
+
+                local originalSize = wideOriginal[obj].Size
+
+                -- Make pupils wider
+                obj.Size = Vector3.new(
+                    originalSize.X * 1.6,
+                    originalSize.Y,
+                    originalSize.Z
+                )
+            end
+        end
+
+    else
+
+        -- Restore original sizes
+        for obj, original in pairs(wideOriginal) do
+            if obj and obj.Parent then
+                obj.Size = original.Size
+            end
+        end
+
+        table.clear(wideOriginal)
+    end
+end)
+
+-- EVIL EYES
+local evilEyeOriginals = {}
+
+createButton("clients", "evil eyes", function(enabled)
+
+    local characterFolder = workspace:FindFirstChild(player.Name)
+    if not characterFolder then
+        warn("Your username folder was not found in Workspace!")
+        return
+    end
+
+    local eyeNames = {
+        "leftsclera",
+        "rightsclera",
+        "leftpupil",
+        "leftblind",
+        "rightpupilblind",
+        "leftpupilblind",
+        "rightblind",
+        "rightpupil"
+    }
+
+    if enabled then
+
+        -- Save original colours/materials
+        evilEyeOriginals = {}
+
+        for _, name in ipairs(eyeNames) do
+            local eye = characterFolder:FindFirstChild(name, true)
+
+            if eye and eye:IsA("BasePart") then
+                evilEyeOriginals[eye] = {
+                    Color = eye.Color,
+                    Material = eye.Material
+                }
+
+                -- Evil glowing red
+                eye.Color = Color3.fromRGB(255, 0, 0)
+                eye.Material = Enum.Material.Neon
+            else
+                warn("Could not find eye part: " .. name)
+            end
+        end
+
+    else
+
+        -- Restore original appearance
+        for eye, original in pairs(evilEyeOriginals) do
+            if eye and eye.Parent then
+                eye.Color = original.Color
+                eye.Material = original.Material
+            end
+        end
+
+        evilEyeOriginals = {}
+    end
+
+end)
+
+-- STARCLAN
+local starClanOriginals = {}
+
+createButton("clients", "starclan", function(enabled)
+
+    local characterFolder = workspace:FindFirstChild(player.Name)
+    if not characterFolder then
+        warn("Your username folder was not found in Workspace!")
+        return
+    end
+
+    local eyeNames = {
+        "leftsclera",
+        "rightsclera",
+        "leftpupil",
+        "leftblind",
+        "rightpupilblind",
+        "leftpupilblind",
+        "rightblind",
+        "rightpupil"
+    }
+
+    if enabled then
+
+        starClanOriginals = {}
+
+        -- Make everything ForceField
+        for _, obj in ipairs(characterFolder:GetDescendants()) do
+            if obj:IsA("BasePart") then
+
+                starClanOriginals[obj] = {
+                    Material = obj.Material,
+                    Color = obj.Color
+                }
+
+                obj.Material = Enum.Material.ForceField
+            end
+        end
+
+        -- Make eyes extremely bright white
+        for _, name in ipairs(eyeNames) do
+
+            local eye = characterFolder:FindFirstChild(name, true)
+
+            if eye and eye:IsA("BasePart") then
+
+                -- Make sure their original appearance is saved
+                if not starClanOriginals[eye] then
+                    starClanOriginals[eye] = {
+                        Material = eye.Material,
+                        Color = eye.Color
+                    }
+                end
+
+                eye.Color = Color3.fromRGB(255, 255, 255)
+                eye.Material = Enum.Material.Neon
+
+            else
+                warn("Could not find eye part: " .. name)
+            end
+        end
+
+    else
+
+        -- Restore everything
+        for obj, original in pairs(starClanOriginals) do
+            if obj and obj.Parent then
+                obj.Material = original.Material
+                obj.Color = original.Color
+            end
+        end
+
+        starClanOriginals = {}
+    end
+
+end)
+
+-- ==========================================
+-- CUPCAKELING
+-- ==========================================
+
+local cupcakeOriginal = {}
+
+createButton("clients", "cupcakeling", function(enabled)
+
+    local character = player.Character
+    if not character then return end
+
+    -- ======================================
+    -- EYES
+    -- ======================================
+
+    local scleraNames = {
+        leftsclera = true,
+        leftblind = true,
+        rightsclera = true,
+        rightblind = true
+    }
+
+    local pupilNames = {
+        leftpupil = true,
+        leftpupilblind = true,
+        rightpupil = true,
+        rightpupilblind = true
+    }
+
+    -- ======================================
+    -- PARTS THAT MUST KEEP THEIR COLOUR
+    -- ======================================
+
+    local excludedNames = {
+        Fang1 = true,
+        Jaw2 = true,
+        Head2 = true,
+        Tongue = true
+    }
+
+    local function isExcluded(obj)
+
+        local name = obj.Name
+
+        -- Eyes stay their own colour
+        if scleraNames[name:lower()]
+        or pupilNames[name:lower()] then
+            return true
+        end
+
+        -- These stay their original colour
+        if excludedNames[name] then
+            return true
+        end
+
+        return false
+    end
+
+    -- ======================================
+    -- ENABLE
+    -- ======================================
+
+    if enabled then
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                -- Save ORIGINAL colour only
+                -- Material is intentionally NOT changed
+                if not cupcakeOriginal[obj] then
+                    cupcakeOriginal[obj] = {
+                        Color = obj.Color
+                    }
+                end
+
+                -- Everything except excluded parts becomes black
+                if not isExcluded(obj) then
+                    obj.Color = Color3.fromRGB(0, 0, 0)
+                end
+
+            end
+        end
+
+        -- ======================================
+        -- BLACK SCLERA
+        -- ======================================
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                local name = obj.Name:lower()
+
+                if scleraNames[name] then
+                    obj.Color = Color3.fromRGB(0, 0, 0)
+                end
+
+            end
+        end
+
+        -- ======================================
+        -- BRIGHT RED PUPILS
+        -- ======================================
+
+        for _, obj in ipairs(character:GetDescendants()) do
+
+            if obj:IsA("BasePart") then
+
+                local name = obj.Name:lower()
+
+                if pupilNames[name] then
+                    obj.Color = Color3.fromRGB(255, 0, 0)
+                end
+
+            end
+        end
+
+    -- ======================================
+    -- DISABLE
+    -- ======================================
+
+    else
+
+        for obj, original in pairs(cupcakeOriginal) do
+
+            if obj and obj.Parent then
+                obj.Color = original.Color
+            end
+
+        end
+
+        table.clear(cupcakeOriginal)
+
+    end
+
+end)
+
+-- ==========================================
+-- CUPCAKELING ALL
+-- Makes every player's morph a cupcakeling
+-- ==========================================
+
+local cupcakeAllRunning = false
+local cupcakeAllConnections = {}
+
+local cupcakeAllOriginalColours = {}
+local cupcakeAllOriginalNames = {}
+
+-- ==========================================
+-- EYES
+-- ==========================================
+
+local cupcakeAllScleraNames = {
+    leftsclera = true,
+    leftblind = true,
+    rightsclera = true,
+    rightblind = true
+}
+
+local cupcakeAllPupilNames = {
+    leftpupil = true,
+    leftpupilblind = true,
+    rightpupil = true,
+    rightpupilblind = true
+}
+
+-- ==========================================
+-- PARTS THAT KEEP THEIR COLOUR
+-- ==========================================
+
+local cupcakeAllExcludedNames = {
+    Fang1 = true,
+    Jaw2 = true,
+    Head2 = true,
+    Tongue = true
+}
+
+local function cupcakeAllIsExcluded(obj)
+
+    local name = obj.Name
+
+    if cupcakeAllScleraNames[name:lower()]
+    or cupcakeAllPupilNames[name:lower()] then
+        return true
+    end
+
+    if cupcakeAllExcludedNames[name] then
+        return true
+    end
+
+    return false
+
+end
+
+-- ==========================================
+-- FIND MORPH FOLDER
+-- ==========================================
+
+local function cupcakeAllGetMorph(playerObject)
+
+    if not playerObject then
+        return nil
+    end
+
+    -- Everyone's morph is stored directly in Workspace
+    -- using their Roblox username.
+    return workspace:FindFirstChild(playerObject.Name)
+
+end
+
+-- ==========================================
+-- SAVE + CHANGE COLOURS
+-- ==========================================
+
+local function cupcakeAllApply(container)
+
+    if not container then
+        return
+    end
+
+    for _,obj in ipairs(container:GetDescendants()) do
+
+        if obj:IsA("BasePart") then
+
+            -- Save original colour only once
+            if cupcakeAllOriginalColours[obj] == nil then
+                cupcakeAllOriginalColours[obj] = obj.Color
+            end
+
+            local name = obj.Name:lower()
+
+            -- Everything except excluded parts becomes black
+            if not cupcakeAllIsExcluded(obj) then
+                obj.Color = Color3.fromRGB(0,0,0)
+            end
+
+            -- Black sclera
+            if cupcakeAllScleraNames[name] then
+                obj.Color = Color3.fromRGB(0,0,0)
+            end
+
+            -- Bright red pupils
+            if cupcakeAllPupilNames[name] then
+                obj.Color = Color3.fromRGB(255,0,0)
+            end
+
+        end
+
+    end
+
+end
+
+-- ==========================================
+-- NAME PATH
+-- Billboards > Username > Content >
+-- MainContainer > PlayerNameContainer >
+-- PlayerName
+-- ==========================================
+
+local function cupcakeAllGetNameLabel(playerObject)
+
+    local billboards = workspace:FindFirstChild("Billboards")
+
+    if not billboards then
+        return nil
+    end
+
+    local playerFolder =
+        billboards:FindFirstChild(playerObject.Name)
+
+    if not playerFolder then
+        return nil
+    end
+
+    local content =
+        playerFolder:FindFirstChild("Content")
+
+    if not content then
+        return nil
+    end
+
+    local mainContainer =
+        content:FindFirstChild("MainContainer")
+
+    if not mainContainer then
+        return nil
+    end
+
+    local playerNameContainer =
+        mainContainer:FindFirstChild("PlayerNameContainer")
+
+    if not playerNameContainer then
+        return nil
+    end
+
+    return playerNameContainer:FindFirstChild("PlayerName")
+
+end
+
+-- ==========================================
+-- APPLY JOIN US
+-- ==========================================
+
+local function cupcakeAllApplyName(playerObject)
+
+    local label =
+        cupcakeAllGetNameLabel(playerObject)
+
+    if not label then
+        return
+    end
+
+    if cupcakeAllOriginalNames[label] == nil then
+        cupcakeAllOriginalNames[label] = label.Text
+    end
+
+    label.Text = "JOIN US"
+
+end
+
+-- ==========================================
+-- APPLY TO EVERYONE
+-- ==========================================
+
+local function cupcakeAllUpdate()
+
+    if not cupcakeAllRunning then
+        return
+    end
+
+    for _,playerObject in ipairs(Players:GetPlayers()) do
+
+        -- Their morph
+        local morph =
+            cupcakeAllGetMorph(playerObject)
+
+        if morph then
+            cupcakeAllApply(morph)
+        end
+
+        -- Their name
+        cupcakeAllApplyName(playerObject)
+
+        -- Also apply to their actual character
+        -- in case the game uses the character model.
+        if playerObject.Character then
+            cupcakeAllApply(playerObject.Character)
+        end
+
+    end
+
+end
+
+-- ==========================================
+-- RESTORE EVERYTHING
+-- ==========================================
+
+local function cupcakeAllRestore()
+
+    -- Restore colours
+    for obj,originalColour in pairs(cupcakeAllOriginalColours) do
+
+        if obj and obj.Parent then
+            obj.Color = originalColour
+        end
+
+    end
+
+    table.clear(cupcakeAllOriginalColours)
+
+    -- Restore names
+    for label,originalText in pairs(cupcakeAllOriginalNames) do
+
+        if label and label.Parent then
+            label.Text = originalText
+        end
+
+    end
+
+    table.clear(cupcakeAllOriginalNames)
+
+end
+
+-- ==========================================
+-- START
+-- ==========================================
+
+local function cupcakeAllStart()
+
+    if cupcakeAllRunning then
+        return
+    end
+
+    cupcakeAllRunning = true
+
+    -- Apply immediately
+    cupcakeAllUpdate()
+
+    -- Keep checking because morphs can appear later
+    cupcakeAllConnections.render =
+        RunService.RenderStepped:Connect(function()
+
+            cupcakeAllUpdate()
+
+        end)
+
+    -- New players
+    cupcakeAllConnections.playerAdded =
+        Players.PlayerAdded:Connect(function(newPlayer)
+
+            task.spawn(function()
+
+                -- Wait for their stuff to load
+                for i = 1,100 do
+
+                    if not cupcakeAllRunning then
+                        return
+                    end
+
+                    cupcakeAllUpdate()
+
+                    task.wait(0.1)
+
+                end
+
+            end)
+
+            -- Reapply after character loads
+            cupcakeAllConnections["char_" .. newPlayer.Name] =
+                newPlayer.CharacterAdded:Connect(function()
+
+                    task.wait(0.5)
+
+                    cupcakeAllUpdate()
+
+                end)
+
+        end)
+
+    -- Existing players' future respawns/morph changes
+    for _,playerObject in ipairs(Players:GetPlayers()) do
+
+        cupcakeAllConnections["char_" .. playerObject.Name] =
+            playerObject.CharacterAdded:Connect(function()
+
+                task.wait(0.5)
+
+                cupcakeAllUpdate()
+
+            end)
+
+    end
+
+end
+
+-- ==========================================
+-- STOP
+-- ==========================================
+
+local function cupcakeAllStop()
+
+    cupcakeAllRunning = false
+
+    for _,connection in pairs(cupcakeAllConnections) do
+
+        if connection then
+            connection:Disconnect()
+        end
+
+    end
+
+    table.clear(cupcakeAllConnections)
+
+    cupcakeAllRestore()
+
+end
+
+-- ==========================================
+-- CREATEBUTTON
+-- SEPARATE FROM "CUPCAKELING"
+-- ==========================================
+
+createButton(
+    "clients",
+    "cupcakeling all",
+    function(enabled)
+
+        if enabled then
+
+            cupcakeAllStart()
+
+        else
+
+            cupcakeAllStop()
+
+        end
+
+    end
+)
