@@ -317,7 +317,7 @@ discord.Parent = keyFrame
 discord.Size = UDim2.new(0,350,0,45)
 discord.Position = UDim2.new(0,25,0,235)
 discord.BackgroundTransparency = 1
-discord.Text = "join https://discord.gg/57m32kQGJ for key"
+discord.Text = "join the discord for key"
 discord.TextColor3 = Color3.fromRGB(255,255,255)
 discord.TextSize = 14
 discord.Font = Enum.Font.FredokaOne
@@ -348,7 +348,7 @@ keyShadowText(copyButton,"Copy",18)
 copyButton.MouseButton1Click:Connect(function()
 
     if setclipboard then
-        setclipboard("https://discord.gg/57m32kQGJ")
+        setclipboard("https://discord.gg/ybE9v6zeF")
     end
 
     for _,child in ipairs(copyButton:GetChildren()) do
