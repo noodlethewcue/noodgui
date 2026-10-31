@@ -36,7 +36,7 @@ _G.NightGUIKeyAccepted = false
 -- KEY SYSTEM
 -- ==========================================
 
-local CORRECT_KEY = "mommyasmr"
+local CORRECT_KEY = "gubby"
 
 -- Remove an old key window if one exists
 local playerGui = player:WaitForChild("PlayerGui")
@@ -1650,6 +1650,456 @@ end
 -- Trolls
 
 -- Clients
+
+--==================================================
+-- ASSET LOADER
+--==================================================
+
+local AssetLoaderGui
+local AssetLoaderFrame
+local AssetIdBox
+local AssetLoaderMinimized = false
+
+local ASSET_FONT = Enum.Font.FredokaOne
+
+local ASSET_MAIN = Color3.fromRGB(102, 66, 99)
+local ASSET_RAISED = Color3.fromRGB(122, 82, 118)
+local ASSET_BUTTON = Color3.fromRGB(172, 112, 160)
+local ASSET_INNER = Color3.fromRGB(70, 46, 68)
+local ASSET_SHADOW = Color3.fromRGB(65, 40, 63)
+
+-- UNDO / REDO HISTORY
+local AssetHistory = {}
+local AssetRedoHistory = {}
+
+--==================================================
+-- TEXT SHADOW
+--==================================================
+
+local function addTextShadow(label)
+
+    local shadow = Instance.new("TextLabel")
+    shadow.Name = "TextShadow"
+    shadow.Size = label.Size
+    shadow.Position = UDim2.new(0, 1, 0, 2)
+    shadow.BackgroundTransparency = 1
+    shadow.Text = label.Text
+    shadow.TextColor3 = ASSET_SHADOW
+    shadow.TextSize = label.TextSize
+    shadow.Font = label.Font
+    shadow.TextXAlignment = label.TextXAlignment
+    shadow.TextYAlignment = label.TextYAlignment
+    shadow.ZIndex = label.ZIndex - 1
+    shadow.Parent = label.Parent
+
+    label:GetPropertyChangedSignal("Text"):Connect(function()
+        shadow.Text = label.Text
+    end)
+
+    return shadow
+end
+
+--==================================================
+-- NOTIFICATIONS
+--==================================================
+
+local function assetNotify(message, success)
+
+    if not AssetLoaderGui then return end
+
+    local notification = Instance.new("TextLabel")
+    notification.Size = UDim2.new(0, 280, 0, 38)
+    notification.Position = UDim2.new(1, -295, 0, 15)
+
+    notification.BackgroundColor3 = success
+        and Color3.fromRGB(70, 145, 100)
+        or Color3.fromRGB(170, 65, 75)
+
+    notification.BorderSizePixel = 0
+    notification.Text = message
+    notification.TextColor3 = Color3.new(1, 1, 1)
+    notification.TextSize = 14
+    notification.Font = ASSET_FONT
+    notification.ZIndex = 20
+    notification.Parent = AssetLoaderGui
+
+    Instance.new("UICorner", notification).CornerRadius =
+        UDim.new(0, 9)
+
+    addTextShadow(notification)
+
+    task.delay(3, function()
+        if notification then
+            notification:Destroy()
+        end
+    end)
+end
+
+--==================================================
+-- SPAWN POSITION
+--==================================================
+
+local function getSpawnCFrame()
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+
+    if root then
+        return root.CFrame * CFrame.new(0, 0, -10)
+    end
+
+    return workspace.CurrentCamera.CFrame * CFrame.new(0, 0, -10)
+end
+
+--==================================================
+-- LOAD ASSET
+--==================================================
+
+local function loadAsset()
+
+    local assetId = AssetIdBox.Text:match("%d+")
+
+    if not assetId then
+        assetNotify("Please enter a valid asset ID!", false)
+        return
+    end
+
+    task.spawn(function()
+
+        local success, result = pcall(function()
+            return game:GetObjects("rbxassetid://" .. assetId)
+        end)
+
+        if not success or not result or not result[1] then
+            assetNotify("Couldn't load this asset!", false)
+            return
+        end
+
+        local asset = result[1]
+
+        for _, object in ipairs(asset:GetDescendants()) do
+            if object:IsA("Script")
+                or object:IsA("LocalScript")
+                or object:IsA("ModuleScript") then
+                object:Destroy()
+            end
+        end
+
+        local spawnCFrame = getSpawnCFrame()
+
+        asset.Parent = workspace
+
+        if asset:IsA("Model") then
+            if asset:FindFirstChildWhichIsA("BasePart", true) then
+                asset:PivotTo(spawnCFrame)
+            end
+        elseif asset:IsA("BasePart") then
+            asset.CFrame = spawnCFrame
+        end
+
+        -- SAVE FOR UNDO
+        table.insert(AssetHistory, asset)
+        table.clear(AssetRedoHistory)
+
+        assetNotify("Asset loaded successfully!", true)
+
+    end)
+end
+
+--==================================================
+-- UNDO
+--==================================================
+
+local function undoAsset()
+
+    local asset = table.remove(AssetHistory)
+
+    if not asset then
+        assetNotify("Nothing to undo!", false)
+        return
+    end
+
+    if asset.Parent then
+        asset.Parent = nil
+    end
+
+    table.insert(AssetRedoHistory, asset)
+
+    assetNotify("Asset undone!", true)
+
+end
+
+--==================================================
+-- REDO
+--==================================================
+
+local function redoAsset()
+
+    local asset = table.remove(AssetRedoHistory)
+
+    if not asset then
+        assetNotify("Nothing to redo!", false)
+        return
+    end
+
+    asset.Parent = workspace
+
+    table.insert(AssetHistory, asset)
+
+    assetNotify("Asset redone!", true)
+
+end
+
+--==================================================
+-- CREATE GUI
+--==================================================
+
+local function createAssetLoader()
+
+    if AssetLoaderGui then
+        AssetLoaderGui.Enabled = true
+        return
+    end
+
+    local player = game.Players.LocalPlayer
+
+    AssetLoaderGui = Instance.new("ScreenGui")
+    AssetLoaderGui.Name = "AssetLoaderGui"
+    AssetLoaderGui.ResetOnSpawn = false
+    AssetLoaderGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    AssetLoaderGui.Parent = player:WaitForChild("PlayerGui")
+
+    -- MAIN FRAME
+
+    AssetLoaderFrame = Instance.new("Frame")
+    AssetLoaderFrame.Name = "AssetLoaderFrame"
+    AssetLoaderFrame.Size = UDim2.new(0, 360, 0, 225)
+    AssetLoaderFrame.Position = UDim2.new(0.5, -180, 0.5, -112)
+    AssetLoaderFrame.BackgroundColor3 = ASSET_MAIN
+    AssetLoaderFrame.BorderSizePixel = 0
+    AssetLoaderFrame.ClipsDescendants = true
+    AssetLoaderFrame.Active = true
+    AssetLoaderFrame.Parent = AssetLoaderGui
+
+    Instance.new("UICorner", AssetLoaderFrame).CornerRadius =
+        UDim.new(0, 14)
+
+    -- TOP BAR
+
+    local topBar = Instance.new("Frame")
+    topBar.Name = "TopBar"
+    topBar.Size = UDim2.new(1, 0, 0, 42)
+    topBar.BackgroundColor3 = ASSET_RAISED
+    topBar.BorderSizePixel = 0
+    topBar.ZIndex = 2
+    topBar.Parent = AssetLoaderFrame
+
+    -- TITLE
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -55, 1, 0)
+    title.Position = UDim2.new(0, 12, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "asset loader"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextSize = 20
+    title.Font = ASSET_FONT
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 4
+    title.Parent = topBar
+
+    addTextShadow(title)
+
+    -- MINIMISE
+
+    local minimizeButton = Instance.new("TextButton")
+    minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+    minimizeButton.Position = UDim2.new(1, -37, 0, 6)
+    minimizeButton.BackgroundColor3 = ASSET_BUTTON
+    minimizeButton.BorderSizePixel = 0
+    minimizeButton.Text = "−"
+    minimizeButton.TextColor3 = Color3.new(1, 1, 1)
+    minimizeButton.TextSize = 22
+    minimizeButton.Font = ASSET_FONT
+    minimizeButton.ZIndex = 5
+    minimizeButton.Parent = topBar
+
+    Instance.new("UICorner", minimizeButton).CornerRadius =
+        UDim.new(0, 8)
+
+    -- CONTENT
+
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.Size = UDim2.new(1, 0, 1, -42)
+    content.Position = UDim2.new(0, 0, 0, 42)
+    content.BackgroundTransparency = 1
+    content.Parent = AssetLoaderFrame
+
+    -- TEXTBOX
+
+    AssetIdBox = Instance.new("TextBox")
+    AssetIdBox.Size = UDim2.new(1, -30, 0, 43)
+    AssetIdBox.Position = UDim2.new(0, 15, 0, 13)
+    AssetIdBox.BackgroundColor3 = ASSET_INNER
+    AssetIdBox.BorderSizePixel = 0
+    AssetIdBox.Text = ""
+    AssetIdBox.PlaceholderText = "enter asset ID..."
+    AssetIdBox.PlaceholderColor3 = Color3.fromRGB(190, 175, 188)
+    AssetIdBox.TextColor3 = Color3.new(1, 1, 1)
+    AssetIdBox.TextSize = 16
+    AssetIdBox.Font = ASSET_FONT
+    AssetIdBox.ClearTextOnFocus = false
+    AssetIdBox.Parent = content
+
+    Instance.new("UICorner", AssetIdBox).CornerRadius =
+        UDim.new(0, 10)
+
+    -- LOAD BUTTON
+
+    local loadButton = Instance.new("TextButton")
+    loadButton.Size = UDim2.new(1, -30, 0, 43)
+    loadButton.Position = UDim2.new(0, 15, 0, 68)
+    loadButton.BackgroundColor3 = ASSET_BUTTON
+    loadButton.BorderSizePixel = 0
+    loadButton.Text = "load asset"
+    loadButton.TextColor3 = Color3.new(1, 1, 1)
+    loadButton.TextSize = 17
+    loadButton.Font = ASSET_FONT
+    loadButton.Parent = content
+
+    Instance.new("UICorner", loadButton).CornerRadius =
+        UDim.new(0, 10)
+
+    addTextShadow(loadButton)
+
+    loadButton.MouseButton1Click:Connect(loadAsset)
+
+    -- UNDO BUTTON
+
+    local undoButton = Instance.new("TextButton")
+    undoButton.Size = UDim2.new(0, 150, 0, 43)
+    undoButton.Position = UDim2.new(0, 15, 0, 125)
+    undoButton.BackgroundColor3 = ASSET_RAISED
+    undoButton.BorderSizePixel = 0
+    undoButton.Text = "↶  undo"
+    undoButton.TextColor3 = Color3.new(1, 1, 1)
+    undoButton.TextSize = 17
+    undoButton.Font = ASSET_FONT
+    undoButton.Parent = content
+
+    Instance.new("UICorner", undoButton).CornerRadius =
+        UDim.new(0, 10)
+
+    addTextShadow(undoButton)
+
+    undoButton.MouseButton1Click:Connect(undoAsset)
+
+    -- REDO BUTTON
+
+    local redoButton = Instance.new("TextButton")
+    redoButton.Size = UDim2.new(0, 150, 0, 43)
+    redoButton.Position = UDim2.new(0, 195, 0, 125)
+    redoButton.BackgroundColor3 = ASSET_RAISED
+    redoButton.BorderSizePixel = 0
+    redoButton.Text = "↷  redo"
+    redoButton.TextColor3 = Color3.new(1, 1, 1)
+    redoButton.TextSize = 17
+    redoButton.Font = ASSET_FONT
+    redoButton.Parent = content
+
+    Instance.new("UICorner", redoButton).CornerRadius =
+        UDim.new(0, 10)
+
+    addTextShadow(redoButton)
+
+    redoButton.MouseButton1Click:Connect(redoAsset)
+
+    -- MINIMISE / RESTORE
+
+    minimizeButton.MouseButton1Click:Connect(function()
+
+        AssetLoaderMinimized = not AssetLoaderMinimized
+
+        if AssetLoaderMinimized then
+            content.Visible = false
+            AssetLoaderFrame.Size = UDim2.new(0, 360, 0, 42)
+            minimizeButton.Text = "+"
+        else
+            content.Visible = true
+            AssetLoaderFrame.Size = UDim2.new(0, 360, 0, 225)
+            minimizeButton.Text = "−"
+        end
+
+    end)
+
+    -- DRAGGING
+
+    local UserInputService = game:GetService("UserInputService")
+
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    topBar.InputBegan:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = AssetLoaderFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+
+        end
+
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+
+        if not dragging then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            local delta = input.Position - dragStart
+
+            AssetLoaderFrame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+
+        end
+
+    end)
+
+end
+
+--==================================================
+-- CREATEBUTTON
+--==================================================
+
+createButton("clients", "asset loader", function(enabled)
+
+    if enabled then
+        createAssetLoader()
+        AssetLoaderGui.Enabled = true
+    else
+        if AssetLoaderGui then
+            AssetLoaderGui.Enabled = false
+        end
+    end
+
+end)
 
 --==================================================
 -- CUSTOM NAME CHANGER
