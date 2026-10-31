@@ -1467,6 +1467,428 @@ createButton("main", "speed changer", function(enabled)
     end)
 end)
 
+createButton("main", "follow gui", function(enabled)
+
+    -- CLEAN UP ANY PREVIOUS VERSION
+    if _G.FollowGuiCleanup then
+        _G.FollowGuiCleanup()
+    end
+
+    if not enabled then
+        return
+    end
+
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+
+    local LocalPlayer = Players.LocalPlayer
+
+    local MAIN = Color3.fromRGB(102, 66, 99)
+    local RAISED = Color3.fromRGB(122, 82, 118)
+    local BUTTON = Color3.fromRGB(172, 112, 160)
+    local INNER = Color3.fromRGB(70, 46, 68)
+    local TEXT = Color3.fromRGB(255, 255, 255)
+
+    local state = {
+        active = true,
+        following = false,
+        targetUsername = nil,
+        tween = nil,
+        gui = nil,
+        connections = {}
+    }
+
+    local function cleanup()
+        state.active = false
+        state.following = false
+
+        if state.tween then
+            pcall(function()
+                state.tween:Cancel()
+            end)
+            state.tween = nil
+        end
+
+        for _, connection in ipairs(state.connections) do
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+
+        if state.gui then
+            state.gui:Destroy()
+        end
+
+        if _G.FollowGuiCleanup == cleanup then
+            _G.FollowGuiCleanup = nil
+        end
+    end
+
+    _G.FollowGuiCleanup = cleanup
+
+    -- GUI
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "FollowGui"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local success = pcall(function()
+        gui.Parent = game:GetService("CoreGui")
+    end)
+
+    if not success then
+        gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    state.gui = gui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 340, 0, 175)
+    frame.Position = UDim2.new(0.5, -170, 0.5, -87)
+    frame.BackgroundColor3 = MAIN
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 10)
+    frameCorner.Parent = frame
+
+    -- TOP BAR
+    local topbar = Instance.new("Frame")
+    topbar.Size = UDim2.new(1, 0, 0, 42)
+    topbar.BackgroundColor3 = RAISED
+    topbar.BorderSizePixel = 0
+    topbar.Parent = frame
+
+    local topCorner = Instance.new("UICorner")
+    topCorner.CornerRadius = UDim.new(0, 10)
+    topCorner.Parent = topbar
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -55, 1, 0)
+    title.Position = UDim2.new(0, 12, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "follow gui"
+    title.TextColor3 = TEXT
+    title.TextSize = 20
+    title.Font = Enum.Font.FredokaOne
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = topbar
+
+    -- MINIMISE
+    local minimise = Instance.new("TextButton")
+    minimise.Size = UDim2.new(0, 35, 0, 30)
+    minimise.Position = UDim2.new(1, -42, 0, 6)
+    minimise.BackgroundColor3 = BUTTON
+    minimise.Text = "-"
+    minimise.TextColor3 = TEXT
+    minimise.TextSize = 22
+    minimise.Font = Enum.Font.FredokaOne
+    minimise.Parent = topbar
+
+    local minCorner = Instance.new("UICorner")
+    minCorner.CornerRadius = UDim.new(0, 7)
+    minCorner.Parent = minimise
+
+    -- DRAGGING
+    local dragging = false
+    local dragStart
+    local startPosition
+
+    table.insert(state.connections, topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPosition = frame.Position
+        end
+    end))
+
+    table.insert(state.connections, UserInputService.InputChanged:Connect(function(input)
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+            local delta = input.Position - dragStart
+
+            frame.Position = UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+        end
+    end))
+
+    table.insert(state.connections, UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end))
+
+    -- CONTENT
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 1, -42)
+    content.Position = UDim2.new(0, 0, 0, 42)
+    content.BackgroundTransparency = 1
+    content.Parent = frame
+
+    local usernameBox = Instance.new("TextBox")
+    usernameBox.Size = UDim2.new(1, -24, 0, 42)
+    usernameBox.Position = UDim2.new(0, 12, 0, 10)
+    usernameBox.BackgroundColor3 = INNER
+    usernameBox.TextColor3 = TEXT
+    usernameBox.PlaceholderColor3 = Color3.fromRGB(195, 175, 190)
+    usernameBox.PlaceholderText = "enter username..."
+    usernameBox.Text = ""
+    usernameBox.TextSize = 17
+    usernameBox.Font = Enum.Font.FredokaOne
+    usernameBox.ClearTextOnFocus = false
+    usernameBox.Parent = content
+
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 7)
+    boxCorner.Parent = usernameBox
+
+    local suggestion = Instance.new("TextLabel")
+    suggestion.Size = UDim2.new(1, -24, 0, 22)
+    suggestion.Position = UDim2.new(0, 12, 0, 53)
+    suggestion.BackgroundTransparency = 1
+    suggestion.Text = ""
+    suggestion.TextColor3 = Color3.fromRGB(220, 190, 220)
+    suggestion.TextSize = 13
+    suggestion.Font = Enum.Font.FredokaOne
+    suggestion.TextXAlignment = Enum.TextXAlignment.Left
+    suggestion.Parent = content
+
+    local followButton = Instance.new("TextButton")
+    followButton.Size = UDim2.new(1, -24, 0, 43)
+    followButton.Position = UDim2.new(0, 12, 0, 80)
+    followButton.BackgroundColor3 = BUTTON
+    followButton.Text = "follow"
+    followButton.TextColor3 = TEXT
+    followButton.TextSize = 19
+    followButton.Font = Enum.Font.FredokaOne
+    followButton.Parent = content
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 7)
+    buttonCorner.Parent = followButton
+
+    -- MINIMISE FUNCTION
+    local minimised = false
+
+    table.insert(state.connections, minimise.MouseButton1Click:Connect(function()
+        minimised = not minimised
+        content.Visible = not minimised
+        frame.Size = minimised
+            and UDim2.new(0, 340, 0, 42)
+            or UDim2.new(0, 340, 0, 175)
+
+        minimise.Text = minimised and "+" or "-"
+    end))
+
+    -- PLAYER MATCHING
+    local function findMatches(text)
+        local matches = {}
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer
+            and string.sub(string.lower(player.Name), 1, #text) == string.lower(text) then
+                table.insert(matches, player.Name)
+            end
+        end
+
+        return matches
+    end
+
+    table.insert(state.connections, usernameBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local text = usernameBox.Text
+
+        if text == "" then
+            suggestion.Text = ""
+            return
+        end
+
+        local matches = findMatches(text)
+
+        if #matches == 1 then
+            suggestion.Text = "match: " .. matches[1]
+        elseif #matches > 1 then
+            suggestion.Text = "more than one match"
+        else
+            suggestion.Text = "no matches found"
+        end
+    end))
+
+    table.insert(state.connections, usernameBox.FocusLost:Connect(function()
+        local matches = findMatches(usernameBox.Text)
+
+        if #matches == 1 then
+            usernameBox.Text = matches[1]
+        end
+    end))
+
+    -- FIND PLAYER'S WCUE FOLDER
+    local function getTargetPart(username)
+        local folder = workspace:FindFirstChild(username)
+
+        if not folder then
+            return nil
+        end
+
+        local preferredNames = {
+            "HumanoidRootPart",
+            "RootPart",
+            "Root",
+            "Torso",
+            "UpperTorso"
+        }
+
+        for _, name in ipairs(preferredNames) do
+            local part = folder:FindFirstChild(name, true)
+
+            if part and part:IsA("BasePart") then
+                return part
+            end
+        end
+
+        if folder:IsA("BasePart") then
+            return folder
+        end
+
+        if folder:IsA("Model") and folder.PrimaryPart then
+            return folder.PrimaryPart
+        end
+
+        return folder:FindFirstChildWhichIsA("BasePart", true)
+    end
+
+    local function getMyRoot()
+        local character = LocalPlayer.Character
+
+        if not character then
+            return nil
+        end
+
+        return character:FindFirstChild("HumanoidRootPart")
+    end
+
+    -- STOP FOLLOWING
+    local function stopFollowing()
+        state.following = false
+        state.targetUsername = nil
+
+        if state.tween then
+            pcall(function()
+                state.tween:Cancel()
+            end)
+            state.tween = nil
+        end
+
+        followButton.Text = "follow"
+        followButton.BackgroundColor3 = BUTTON
+    end
+
+    -- START FOLLOWING
+    local function startFollowing(username)
+        if state.tween then
+            pcall(function()
+                state.tween:Cancel()
+            end)
+            state.tween = nil
+        end
+
+        state.targetUsername = username
+        state.following = true
+
+        followButton.Text = "unfollow"
+        followButton.BackgroundColor3 = RAISED
+
+        local firstTeleport = true
+
+        task.spawn(function()
+            while state.active
+            and state.following
+            and state.targetUsername == username do
+
+                local targetPart = getTargetPart(username)
+                local myRoot = getMyRoot()
+
+                if targetPart and myRoot then
+                    -- EXACT SAME POSITION AND ROTATION
+                    local targetCFrame = targetPart.CFrame
+
+                    if firstTeleport then
+                        myRoot.CFrame = targetCFrame
+                        firstTeleport = false
+                    else
+                        if state.tween then
+                            pcall(function()
+                                state.tween:Cancel()
+                            end)
+                        end
+
+                        local tweenInfo = TweenInfo.new(
+                            0.08,
+                            Enum.EasingStyle.Linear,
+                            Enum.EasingDirection.InOut
+                        )
+
+                        state.tween = TweenService:Create(
+                            myRoot,
+                            tweenInfo,
+                            {CFrame = targetCFrame}
+                        )
+
+                        state.tween:Play()
+                    end
+                end
+
+                -- Keeps checking if their folder or your character disappears
+                task.wait(0.05)
+            end
+        end)
+    end
+
+    -- FOLLOW BUTTON
+    table.insert(state.connections, followButton.MouseButton1Click:Connect(function()
+        if state.following then
+            stopFollowing()
+            return
+        end
+
+        local username = usernameBox.Text
+
+        if username == "" then
+            suggestion.Text = "enter a username first"
+            return
+        end
+
+        local foundPlayer
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if string.lower(player.Name) == string.lower(username) then
+                foundPlayer = player
+                break
+            end
+        end
+
+        if not foundPlayer then
+            suggestion.Text = "player not found"
+            return
+        end
+
+        usernameBox.Text = foundPlayer.Name
+        suggestion.Text = "following " .. foundPlayer.Name
+
+        startFollowing(foundPlayer.Name)
+    end))
+
+end)
+
 -- EDITOR TEAM BUTTON (Trolls)
 
 local player = game.Players.LocalPlayer
