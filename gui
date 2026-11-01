@@ -6152,3 +6152,222 @@ createButton(
 
     end
 )
+
+--==============================
+-- MODERATOR DETECTOR
+--==============================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local GROUP_ID = 2650756
+local TARGET_ROLE = "🛡️Moderator"
+
+-- YOUR GUI COLOURS
+local MAIN = Color3.fromRGB(102, 66, 99)
+local RAISED = Color3.fromRGB(122, 82, 118)
+local BUTTON = Color3.fromRGB(172, 112, 160)
+local TEXT = Color3.fromRGB(255, 255, 255)
+
+local detectedMods = {}
+local popupClosed = false
+local modGui
+
+--==============================
+-- CREATE / UPDATE POPUP
+--==============================
+
+local function showModPopup()
+    if popupClosed then
+        return
+    end
+
+    local modNames = {}
+
+    for username in pairs(detectedMods) do
+        table.insert(modNames, username)
+    end
+
+    table.sort(modNames)
+
+    if #modNames == 0 then
+        return
+    end
+
+    if modGui and modGui.Parent then
+        local frame = modGui:FindFirstChild("MainFrame")
+        if frame then
+            local title = frame:FindFirstChild("Title")
+            local names = frame:FindFirstChild("Names")
+
+            if title then
+                title.Text = #modNames == 1
+                    and "moderator detected"
+                    or "moderators detected"
+            end
+
+            if names then
+                names.Text = table.concat(modNames, "\n")
+            end
+        end
+        return
+    end
+
+    modGui = Instance.new("ScreenGui")
+    modGui.Name = "ModeratorDetectedPopup"
+    modGui.ResetOnSpawn = false
+    modGui.DisplayOrder = 999
+    modGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Name = "MainFrame"
+    frame.Size = UDim2.new(0, 360, 0, 180)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = MAIN
+    frame.BorderSizePixel = 0
+    frame.Parent = modGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = RAISED
+    stroke.Thickness = 2
+    stroke.Parent = frame
+
+    -- TITLE
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -60, 0, 55)
+    title.Position = UDim2.new(0, 16, 0, 12)
+    title.BackgroundTransparency = 1
+    title.Text = #modNames == 1
+        and "moderator detected"
+        or "moderators detected"
+    title.Font = Enum.Font.FredokaOne
+    title.TextSize = 23
+    title.TextColor3 = TEXT
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    -- CLOSE BUTTON
+    local close = Instance.new("TextButton")
+    close.Size = UDim2.new(0, 34, 0, 34)
+    close.Position = UDim2.new(1, -46, 0, 12)
+    close.BackgroundColor3 = BUTTON
+    close.BorderSizePixel = 0
+    close.Text = "X"
+    close.Font = Enum.Font.FredokaOne
+    close.TextSize = 19
+    close.TextColor3 = TEXT
+    close.Parent = frame
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 7)
+    closeCorner.Parent = close
+
+    close.MouseButton1Click:Connect(function()
+        popupClosed = true
+
+        if modGui then
+            modGui:Destroy()
+            modGui = nil
+        end
+    end)
+
+    -- MODERATOR USERNAMES
+    local names = Instance.new("TextLabel")
+    names.Name = "Names"
+    names.Size = UDim2.new(1, -32, 0, 95)
+    names.Position = UDim2.new(0, 16, 0, 68)
+    names.BackgroundColor3 = RAISED
+    names.BorderSizePixel = 0
+    names.Text = table.concat(modNames, "\n")
+    names.Font = Enum.Font.FredokaOne
+    names.TextSize = 20
+    names.TextColor3 = TEXT
+    names.TextWrapped = true
+    names.TextYAlignment = Enum.TextYAlignment.Center
+    names.Parent = frame
+
+    local namesCorner = Instance.new("UICorner")
+    namesCorner.CornerRadius = UDim.new(0, 8)
+    namesCorner.Parent = names
+end
+
+--==============================
+-- CHECK PLAYER
+--==============================
+
+local function checkPlayer(player)
+    if player == LocalPlayer then
+        return
+    end
+
+    task.spawn(function()
+        local success, role = pcall(function()
+            return player:GetRoleInGroup(GROUP_ID)
+        end)
+
+        if success and role == TARGET_ROLE then
+            detectedMods[player.Name] = true
+            showModPopup()
+        end
+    end)
+end
+
+--==============================
+-- CHECK PLAYERS ALREADY HERE
+--==============================
+
+for _, player in ipairs(Players:GetPlayers()) do
+    checkPlayer(player)
+end
+
+--==============================
+-- CHECK NEW PLAYERS
+--==============================
+
+Players.PlayerAdded:Connect(function(player)
+    checkPlayer(player)
+end)
+
+-- Remove moderators who leave
+Players.PlayerRemoving:Connect(function(player)
+    detectedMods[player.Name] = nil
+
+    if modGui and modGui.Parent then
+        local frame = modGui:FindFirstChild("MainFrame")
+        if frame then
+            local title = frame:FindFirstChild("Title")
+            local names = frame:FindFirstChild("Names")
+
+            local count = 0
+            local list = {}
+
+            for username in pairs(detectedMods) do
+                count += 1
+                table.insert(list, username)
+            end
+
+            table.sort(list)
+
+            if count == 0 then
+                modGui:Destroy()
+                modGui = nil
+            else
+                if title then
+                    title.Text = count == 1
+                        and "moderator detected"
+                        or "moderators detected"
+                end
+
+                if names then
+                    names.Text = table.concat(list, "\n")
+                end
+            end
+        end
+    end
+end)
